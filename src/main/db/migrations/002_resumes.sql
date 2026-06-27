@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS resumes (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  file_path TEXT,
+  parsed_data JSON NOT NULL,
+  is_primary INTEGER NOT NULL DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id);
