@@ -1,0 +1,178 @@
+{
+  "version": "2026-06-28",
+  "platform": "boss",
+  "profiles": [
+    {
+      "pageType": "job_list",
+      "version": "2026-06-28",
+      "urlPattern": "/web/geek/jobs",
+      "domFingerprint": "job-card-wrapper|job-list-box",
+      "apiFingerprint": "/wapi/zpgeek/pc/recommend/job/list.json",
+      "notes": "职位推荐列表页，MCP 采样 + 公开资料",
+      "recipe": {
+        "pageType": "job_list",
+        "version": "2026-06-28",
+        "urlPattern": "/web/geek/jobs",
+        "api": {
+          "listUrl": "https://www.zhipin.com/wapi/zpgeek/pc/recommend/job/list.json?page={page}&pageSize=15&city={city}",
+          "method": "GET",
+          "listJsonPath": "zpData.jobList",
+          "hasMorePath": "zpData.hasMore",
+          "fieldMap": {
+            "id": "encryptJobId",
+            "title": "jobName",
+            "salary": "salaryDesc",
+            "city": "cityName",
+            "companyName": "brandName",
+            "companyScale": "brandScaleName",
+            "benefits": "welfareList",
+            "securityId": "securityId",
+            "jobUrl": "__template__:https://www.zhipin.com/job_detail/{encryptJobId}.html"
+          },
+          "pagination": {
+            "param": "page",
+            "startPage": 1,
+            "maxPages": 3
+          },
+          "queryParams": {
+            "city": "101280100"
+          }
+        },
+        "dom": {
+          "listContainer": ".job-list-box",
+          "itemSelector": ".job-card-wrapper, .job-card, li.job-card-box",
+          "scrollContainer": ".job-list-box",
+          "scrollStep": 600,
+          "maxScrollRounds": 6,
+          "fieldMap": {
+            "id": { "selector": "a[href*=\"job_detail\"]", "attr": "href", "regex": "job_detail/([^.?/]+)" },
+            "title": { "selector": ".job-name, .job-title, a.job-name", "attr": "text" },
+            "salary": { "selector": ".salary, .job-salary", "attr": "text" },
+            "city": { "selector": ".job-area, .job-info", "attr": "text" },
+            "companyName": { "selector": ".company-name, .boss-name", "attr": "text" },
+            "jobUrl": { "selector": "a[href*=\"job_detail\"]", "attr": "href" }
+          }
+        }
+      }
+    },
+    {
+      "pageType": "job_detail",
+      "version": "2026-06-28",
+      "urlPattern": "/job_detail/",
+      "domFingerprint": "job-detail|job-banner",
+      "apiFingerprint": "/wapi/zpgeek/job/detail.json",
+      "notes": "职位详情，API 优先",
+      "recipe": {
+        "pageType": "job_detail",
+        "version": "2026-06-28",
+        "urlPattern": "/job_detail/",
+        "api": {
+          "detailUrl": "https://www.zhipin.com/wapi/zpgeek/job/detail.json?securityId={securityId}",
+          "method": "GET",
+          "detailJsonPath": "zpData",
+          "fieldMap": {
+            "id": "jobInfo.encryptId",
+            "title": "jobInfo.jobName",
+            "salary": "jobInfo.salaryDesc",
+            "city": "jobInfo.locationName",
+            "responsibilities": "jobInfo.postDescription",
+            "benefits": "jobInfo.showSkills",
+            "companyName": "brandComInfo.brandName",
+            "companyType": "brandComInfo.stageName",
+            "companyScale": "brandComInfo.scaleName",
+            "registeredCapital": "brandComInfo.regCapital"
+          }
+        },
+        "dom": {
+          "itemSelector": ".job-detail, .job-box",
+          "fieldMap": {
+            "title": { "selector": ".name h1, .job-title", "attr": "text" },
+            "salary": { "selector": ".salary", "attr": "text" },
+            "responsibilities": { "selector": ".job-sec-text, .text", "attr": "text" },
+            "companyName": { "selector": ".company-name, .sider-company .name", "attr": "text" },
+            "companyScale": { "selector": ".company-text .scale", "attr": "text" }
+          }
+        },
+        "actions": {
+          "apply": {
+            "selector": ".btn-startchat, .job-detail-operate .btn",
+            "description": "立即沟通（预研，Phase 1c）"
+          }
+        }
+      }
+    },
+    {
+      "pageType": "login",
+      "version": "2026-06-28",
+      "urlPattern": "/web/user",
+      "notes": "登录页",
+      "recipe": {
+        "pageType": "login",
+        "version": "2026-06-28",
+        "urlPattern": "/web/user",
+        "dom": {
+          "itemSelector": ".login-container",
+          "fieldMap": {
+            "loggedInMarker": { "selector": ".nav-figure, .geek-nav", "attr": "text" }
+          }
+        }
+      }
+    },
+    {
+      "pageType": "resume_upload",
+      "version": "2026-06-28",
+      "urlPattern": "/web/geek/resume",
+      "notes": "简历上传（预研槽位）",
+      "recipe": {
+        "pageType": "resume_upload",
+        "version": "2026-06-28",
+        "urlPattern": "/web/geek/resume",
+        "actions": {
+          "upload_resume": {
+            "selector": "input[type=file]",
+            "description": "简历附件上传（预研）"
+          }
+        }
+      }
+    },
+    {
+      "pageType": "resume_manage",
+      "version": "2026-06-28",
+      "urlPattern": "/web/geek/resume",
+      "notes": "简历管理/下载（预研槽位）",
+      "recipe": {
+        "pageType": "resume_manage",
+        "version": "2026-06-28",
+        "urlPattern": "/web/geek/resume",
+        "actions": {
+          "download_resume": {
+            "selector": "a[href*=\"download\"]",
+            "description": "简历下载链接（预研）"
+          }
+        }
+      }
+    },
+    {
+      "pageType": "chat",
+      "version": "2026-06-28",
+      "urlPattern": "/web/geek/chat",
+      "notes": "消息会话（预研槽位）",
+      "recipe": {
+        "pageType": "chat",
+        "version": "2026-06-28",
+        "urlPattern": "/web/geek/chat",
+        "api": {
+          "listUrl": "https://www.zhipin.com/wapi/zpchat/notify/setting/get",
+          "method": "GET",
+          "listJsonPath": "zpData"
+        },
+        "actions": {
+          "send_message": {
+            "selector": ".chat-input textarea, .message-input",
+            "description": "发送消息输入框（预研）"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -8,13 +8,24 @@ describe('runMigrations', () => {
 
     expect(listMigrationVersions()).toContain('001_init')
     expect(listMigrationVersions()).toContain('002_resumes')
+    expect(listMigrationVersions()).toContain('003_preferences_platform')
+    expect(listMigrationVersions()).toContain('004_platform_profiles')
 
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .all() as Array<{ name: string }>
 
     expect(tables.map((table) => table.name)).toEqual(
-      expect.arrayContaining(['schema_migrations', 'users', 'resumes'])
+      expect.arrayContaining([
+        'schema_migrations',
+        'users',
+        'resumes',
+        'job_preferences',
+        'platform_accounts',
+        'platform_page_profiles',
+        'platform_extract_runs',
+        'job_listings'
+      ])
     )
 
     const applied = db
@@ -22,7 +33,12 @@ describe('runMigrations', () => {
       .all() as Array<{ version: string }>
 
     expect(applied.map((row) => row.version)).toEqual(
-      expect.arrayContaining(['001_init', '002_resumes'])
+      expect.arrayContaining([
+        '001_init',
+        '002_resumes',
+        '003_preferences_platform',
+        '004_platform_profiles'
+      ])
     )
 
     runMigrations(db)
@@ -31,7 +47,7 @@ describe('runMigrations', () => {
       .prepare('SELECT version FROM schema_migrations ORDER BY version')
       .all() as Array<{ version: string }>
 
-    expect(appliedAgain).toHaveLength(2)
+    expect(appliedAgain).toHaveLength(4)
 
     db.close()
   })

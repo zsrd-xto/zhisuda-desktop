@@ -1,0 +1,22 @@
+{
+  "code": 0,
+  "message": "Success",
+  "zpData": {
+    "jobInfo": {
+      "encryptId": "sample_job_id_001",
+      "jobName": "前端开发工程师",
+      "salaryDesc": "15-25K",
+      "postDescription": "1. 负责 Web 前端开发\n2. 参与架构设计",
+      "showSkills": ["Vue", "React", "TypeScript"],
+      "locationName": "广州·天河区"
+    },
+    "brandComInfo": {
+      "brandName": "示例科技有限公司",
+      "stageName": "不需要融资",
+      "scaleName": "100-499人",
+      "industryName": "互联网",
+      "introduce": "公司介绍示例",
+      "regCapital": "1000万人民币"
+    }
+  }
+}

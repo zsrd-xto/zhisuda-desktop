@@ -9,6 +9,16 @@ export type IpcChannel =
   | 'resume:upload'
   | 'resume:update'
   | 'resume:uploadFromPath'
+  | 'preferences:get'
+  | 'preferences:save'
+  | 'platform:login'
+  | 'platform:checkLogin'
+  | 'platform:fetchJobs'
+  | 'platform:getStatus'
+  | 'platform:hideView'
+  | 'platform:setViewLayout'
+  | 'platform:getViewLayout'
+  | 'platform:debugSnapshot'
 
 export interface ZhisudaApi {
   invoke: <T>(channel: IpcChannel, ...args: unknown[]) => Promise<T>

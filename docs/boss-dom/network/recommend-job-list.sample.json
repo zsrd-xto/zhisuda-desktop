@@ -1,0 +1,23 @@
+{
+  "code": 0,
+  "message": "Success",
+  "zpData": {
+    "hasMore": true,
+    "jobList": [
+      {
+        "encryptJobId": "sample_job_id_001",
+        "jobName": "前端开发工程师",
+        "salaryDesc": "15-25K",
+        "cityName": "广州",
+        "brandName": "示例科技有限公司",
+        "brandScaleName": "100-499人",
+        "brandIndustry": "互联网",
+        "jobExperience": "3-5年",
+        "jobDegree": "本科",
+        "securityId": "sample_security_id_001",
+        "welfareList": ["五险一金", "年终奖", "带薪年假"],
+        "skills": ["Vue", "React"]
+      }
+    ]
+  }
+}

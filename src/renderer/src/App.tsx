@@ -3,6 +3,8 @@ import type { UserProfile } from '@shared/types/user'
 import { Layout, type AppPage } from '@renderer/components/Layout'
 import { zhisudaClient } from '@renderer/lib/zhisuda-client'
 import { HomePage } from '@renderer/pages/HomePage'
+import { JobsPage } from '@renderer/pages/JobsPage'
+import { PreferencesPage } from '@renderer/pages/PreferencesPage'
 import { ResumePage } from '@renderer/pages/ResumePage'
 import { SettingsPage } from '@renderer/pages/SettingsPage'
 
@@ -42,6 +44,13 @@ function App(): React.JSX.Element {
     setState({ status: 'ready', profile })
   }
 
+  const handleNavigate = (page: AppPage): void => {
+    if (page !== 'jobs') {
+      void zhisudaClient.platform.hideView()
+    }
+    setCurrentPage(page)
+  }
+
   const handleDataCleared = (): void => {
     setResumeRefreshKey((value) => value + 1)
     setCurrentPage('home')
@@ -64,7 +73,7 @@ function App(): React.JSX.Element {
   }
 
   return (
-    <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
+    <Layout currentPage={currentPage} onNavigate={handleNavigate}>
       {currentPage === 'home' && (
         <HomePage
           key={state.profile.id}
@@ -73,6 +82,8 @@ function App(): React.JSX.Element {
         />
       )}
       {currentPage === 'resume' && <ResumePage refreshKey={resumeRefreshKey} />}
+      {currentPage === 'preferences' && <PreferencesPage />}
+      {currentPage === 'jobs' && <JobsPage />}
       {currentPage === 'settings' && (
         <SettingsPage
           profile={state.profile}

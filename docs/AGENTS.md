@@ -39,6 +39,22 @@
 - 样式只用 Tailwind CSS
 - 不要使用 any 类型
 
+## 测试规范
+
+完成代码改动后，**必须**跑通单元测试；端到端测试按需执行。
+
+| 命令 | 要求 | 说明 |
+|------|------|------|
+| `npm test` | **必须** | 单元测试（Vitest），覆盖主进程服务、解析器、DB migration 等 |
+| `npm run test:e2e` | 可选 | Playwright + Electron E2E，验证 UI 与 IPC 完整链路（耗时较长，含构建） |
+
+**执行顺序**：先 `npm test`，通过后再视情况执行 `npm run test:e2e`。
+
+**注意**：
+- `npm test` 前会自动执行 `pretest`（切换 Node 原生绑定）；若报 `NODE_MODULE_VERSION` 不匹配，先执行 `node scripts/ensure-node-native.mjs`
+- `npm run test:e2e` 前会自动构建应用；跑 E2E 前需关闭正在运行的 Electron 实例
+- 新增 IPC channel 或改动 Phase 验收相关功能时，建议补充/更新 `e2e/tests/` 对应用例
+
 ## git提交规范
 -- 用户名：向涛
 -- 邮箱：xt0913@yeah.net

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type AppPage = 'home' | 'resume' | 'settings'
+export type AppPage = 'home' | 'resume' | 'preferences' | 'jobs' | 'settings'
 
 interface LayoutProps {
   currentPage: AppPage
@@ -11,6 +11,8 @@ interface LayoutProps {
 const NAV_ITEMS: Array<{ id: AppPage; label: string }> = [
   { id: 'home', label: '个人中心' },
   { id: 'resume', label: '简历管理' },
+  { id: 'preferences', label: '求职偏好' },
+  { id: 'jobs', label: 'Boss 岗位' },
   { id: 'settings', label: '设置' }
 ]
 
@@ -23,7 +25,7 @@ export function Layout({ currentPage, onNavigate, children }: LayoutProps): Reac
             <p className="text-sm font-medium uppercase tracking-widest text-emerald-400">职速达</p>
             <h1 className="text-lg font-semibold text-white">好工作，职速达</h1>
           </div>
-          <nav className="flex gap-2">
+          <nav className="flex flex-wrap gap-2">
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}

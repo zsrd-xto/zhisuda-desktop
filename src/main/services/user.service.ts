@@ -58,6 +58,11 @@ export function updateNickname(nickname: string, db: Database.Database = getDb()
 
 export function clearAllData(db: Database.Database = getDb()): UserProfile {
   const run = db.transaction(() => {
+    db.prepare('DELETE FROM job_listings').run()
+    db.prepare('DELETE FROM platform_extract_runs').run()
+    db.prepare('DELETE FROM platform_page_profiles').run()
+    db.prepare('DELETE FROM platform_accounts').run()
+    db.prepare('DELETE FROM job_preferences').run()
     db.prepare('DELETE FROM resumes').run()
     db.prepare('DELETE FROM users').run()
   })

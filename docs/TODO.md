@@ -188,17 +188,43 @@ Then 展示结构化预览（基本信息/工作经历/项目/教育等）
 
 #### Phase 1b — 偏好与 Boss 登录（W3–4）
 
-- [ ] 求职偏好 CRUD（城市/薪资/岗位/黑名单/关键词等）
-- [ ] Boss BrowserView：登录页加载、UA 伪装、partition 持久化
-- [ ] 登录状态检测（`platform:login`）
-- [ ] 岗位列表抓取（`platform:fetchJobs`，上限 100）
-- [ ] 从 spike 迁移 Boss 配置至 `main/platform/boss/`
+- [x] 求职偏好 CRUD（城市/薪资/岗位/黑名单/关键词等）
+- [x] Boss BrowserView：登录页加载、UA 伪装、partition 持久化
+- [x] 登录状态检测（`platform:login` / `platform:checkLogin`）
+- [x] 岗位列表抓取（`platform:fetchJobs`，上限 100）
+- [x] 从 spike 迁移 Boss 配置至 `main/platform/boss/`
 
 **验收**：
 
-- [ ] WebView 扫码/密码登录成功
-- [ ] Cookie 重启后仍有效
-- [ ] 手动触发抓取返回 ≥5 条岗位
+- [ ] WebView 扫码/密码登录成功（需人工验证）
+- [ ] Cookie 重启后仍有效（需人工验证）
+- [ ] 手动触发抓取返回 ≥5 条岗位（需人工验证）
+
+#### Phase 1b+ — Boss 结构化适配（W4–5）
+
+> Boss 禁用 F12 / DevTools 检测。采样改用应用内「导出页面结构」，运行时采用 API 优先 + DOM 兜底双通道。详见 `docs/boss-dom/README.md`。
+
+- [x] 应用内页面结构导出（`platform:debugSnapshot` → `boss-dom-capture/`）
+- [x] 种子配置 `docs/boss-dom/seed-profile-v1.json` + API 样例
+- [x] DB migration 004：`platform_page_profiles` / `platform_extract_runs` / `job_listings`
+- [x] `PageRecipe` 类型、`ScriptCompiler`、`ApiExtractor`、`ExtractorRunner`（代码已落地）
+- [ ] 人工采样确认后更新 fieldMap，并 `import-profile` 入库
+- [ ] `platform:fetchJobs` 切换至 `ExtractorRunner`（API 优先 + 限流）
+- [ ] 结构化错误码透传 UI（`NOT_LOGGED_IN` / `API_CHANGED` / `DOM_CHANGED` / `RATE_LIMIT` 等）
+- [ ] `tools/boss-explorer/validate-profile.mjs` 校验 JSONPath
+- [ ] 预研槽位：resume_upload / resume_manage / chat / apply（仅配置，不实现）
+
+**访问频率约束**（`BOSS_RATE_LIMIT`）：
+
+- 列表分页间隔 3–5s；详情间隔 4–8s；单次详情 ≤10 条
+- 两次完整抓取冷却 ≥2 分钟
+- API 在 BrowserView 内 `fetch`，不主进程直调
+
+**验收**：
+
+- [ ] 「导出页面结构」生成有效 snapshot JSON
+- [ ] 双通道抓取返回 ≥5 条且含详情字段（职责/公司规模等）
+- [ ] 触发风控时返回 `RATE_LIMIT` 而非静默失败
 
 #### Phase 1c — 核心投递（W5–6）
 
@@ -462,6 +488,9 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 | `platform:login` | R→M | 1b | 打开 Boss WebView 登录 |
 | `platform:checkLogin` | R→M | 1b | 检测登录状态 |
 | `platform:fetchJobs` | R→M | 1b | 触发岗位抓取 |
+| `platform:debugSnapshot` | R→M | 1b+ | 导出 Boss DOM/API 结构（开发采样） |
+| `platform:hideView` | R→M | 1b | 隐藏底部 WebView |
+| `platform:setViewLayout` | R→M | 1b | 展开/收起底部面板 |
 | `delivery:applyBatch` | R→M | 1c | L1 批量投递 |
 | `delivery:getRecords` | R→M | 1c | 投递记录查询 |
 | `delivery:resumeQueue` | R→M | 1c | 人工接管后继续 |
@@ -479,7 +508,8 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 |------|------|------|
 | Phase 0 工程脚手架 | ✅ 已完成 | electron-vite + IPC + SQLite |
 | Phase 1a 基础数据 | ✅ 已完成 | 本地账号 + 简历上传解析编辑 |
-| Phase 1b 偏好与登录 | ⬜ 未开始 | 偏好 + Boss WebView |
+| Phase 1b 偏好与登录 | ✅ 已完成 | 偏好 CRUD + Boss WebView IPC |
+| Phase 1b+ Boss 结构化适配 | 🔄 进行中 | 应用内采样 + 双通道抓取 |
 | Phase 1c 核心投递 | ⬜ 未开始 | 匹配 + L1 投递 + 看板 |
 | Phase 1d 分发与更新 | ⬜ 未开始 | 打包 + 官网 + updater |
 | Phase 1e 稳定化 | ⬜ 未开始 | HR 提醒 + 协议 + 打磨 |
@@ -487,9 +517,9 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 | Phase 3 v0.3 | ⬜ 未开始 | AI 简历优化 |
 | Phase 4 v0.4+ | ⬜ 未开始 | 全平台 + 商业化 |
 
-**当前焦点**：Phase 1b — 求职偏好 + Boss WebView 登录。
+**当前焦点**：Phase 1b+ — 应用内采样确认 fieldMap，接入双通道抓取。
 
-**最近更新**：2026-06-27 — Phase 1a 完成（昵称、简历上传解析、在线编辑、自动保存、清除数据）。
+**最近更新**：2026-06-28 — 新增 `platform:debugSnapshot`、Boss 结构化适配路线与限流策略。
 
 ---
 
@@ -497,6 +527,8 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 
 | 日期 | 变更 |
 |------|------|
+| 2026-06-28 | Phase 1b+：应用内 DOM/API 导出、seed-profile、migration 004、双通道架构 |
+| 2026-06-27 | Phase 1b 完成：求职偏好 IPC、Boss BrowserView、platform 登录/抓取、迁移 003 |
 | 2026-06-27 | Phase 1a 完成：昵称、简历 IPC、PDF/Word 解析、编辑预览、自动保存、清除数据 |
 | 2026-06-24 | Phase 0 完成：脚手架、IPC、SQLite migration、Vitest、Tailwind |
 | 2026-06-24 | 初版：技术栈（Tailwind）、目录结构、Phase 0–4 路线图、IPC 登记表 |
