@@ -1,9 +1,14 @@
 import Database from 'better-sqlite3'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createDefaultPreferencesInput } from '../../shared/types/preferences'
+import { createDefaultPreferenceInput } from '../../shared/types/preferences'
 import { openDatabase } from '../db/database'
 import { getOrCreateProfile } from './user.service'
-import { getPreferences, getPreferencesOrDefault, savePreferences } from './preferences.service'
+import {
+  deletePreference,
+  getPreference,
+  listPreferences,
+  savePreference
+} from './preferences.service'
 
 function createTestDb(): Database.Database {
   return openDatabase(':memory:')
@@ -17,38 +22,71 @@ describe('preferences.service', () => {
     db = null
   })
 
-  it('returns defaults when preferences do not exist', () => {
-    db = createTestDb()
-    const user = getOrCreateProfile(db)
-    const defaults = getPreferencesOrDefault(db)
-
-    expect(defaults.userId).toBe(user.id)
-    expect(defaults.targetPositions).toEqual([])
-    expect(defaults.requireInsurance).toBe(true)
-  })
-
-  it('saves and loads preferences', () => {
+  it('creates multiple preferences with generated names', () => {
     db = createTestDb()
     getOrCreateProfile(db)
 
-    const input = {
-      ...createDefaultPreferencesInput(),
-      targetPositions: ['前端开发'],
-      targetCities: ['北京'],
-      salaryMin: 20,
-      salaryMax: 30,
-      excludeOutsource: true,
-      blacklistCompanies: ['某公司'],
-      excludeKeywords: ['外包']
-    }
+    const first = savePreference(
+      {
+        ...createDefaultPreferenceInput(),
+        targetPosition: 'AI应用开发',
+        targetCity: '深圳',
+        salaryMin: 20,
+        salaryMax: 25
+      },
+      db
+    )
 
-    const saved = savePreferences(input, db)
-    expect(saved.targetPositions).toEqual(['前端开发'])
-    expect(saved.excludeOutsource).toBe(true)
+    const second = savePreference(
+      {
+        ...createDefaultPreferenceInput(),
+        targetPosition: '前端开发',
+        targetCity: '北京',
+        salaryMin: 15,
+        salaryMax: 30
+      },
+      db
+    )
 
-    const loaded = getPreferences(db)
-    expect(loaded?.salaryMax).toBe(30)
-    expect(loaded?.blacklistCompanies).toEqual(['某公司'])
+    expect(first.name).toBe('AI应用开发·深圳·20-25K')
+    expect(second.name).toBe('前端开发·北京·15-30K')
+    expect(listPreferences(db)).toHaveLength(2)
+  })
+
+  it('updates and deletes preference', () => {
+    db = createTestDb()
+    getOrCreateProfile(db)
+
+    const saved = savePreference(
+      {
+        ...createDefaultPreferenceInput(),
+        targetPosition: '前端开发',
+        targetCity: '北京',
+        salaryMin: 20,
+        salaryMax: 30,
+        excludeOutsource: true
+      },
+      db
+    )
+
+    const updated = savePreference(
+      {
+        id: saved.id,
+        ...createDefaultPreferenceInput(),
+        targetPosition: '全栈工程师',
+        targetCity: '上海',
+        salaryMin: 25,
+        salaryMax: 35,
+        excludeOutsource: true
+      },
+      db
+    )
+
+    expect(updated.name).toBe('全栈工程师·上海·25-35K')
+    expect(getPreference(saved.id, db)?.targetCity).toBe('上海')
+
+    expect(deletePreference(saved.id, db)).toBe(true)
+    expect(listPreferences(db)).toHaveLength(0)
   })
 
   it('rejects invalid salary range', () => {
@@ -56,11 +94,11 @@ describe('preferences.service', () => {
     getOrCreateProfile(db)
 
     expect(() =>
-      savePreferences(
+      savePreference(
         {
-          ...createDefaultPreferencesInput(),
-          targetPositions: ['前端开发'],
-          targetCities: ['北京'],
+          ...createDefaultPreferenceInput(),
+          targetPosition: '前端开发',
+          targetCity: '北京',
           salaryMin: 30,
           salaryMax: 20
         },

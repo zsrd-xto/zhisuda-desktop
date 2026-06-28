@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import type { BossViewLayout } from '../../shared/types/platform'
+import { serializePlatformErrorForIpc } from '../platform/platform-error'
 import {
   checkBossPlatformLogin,
   exportBossDomSnapshot,
@@ -11,17 +12,25 @@ import {
   setBossViewLayout
 } from '../services/platform.service'
 
+async function handlePlatformAction<T>(action: () => Promise<T>): Promise<T> {
+  try {
+    return await action()
+  } catch (error) {
+    throw serializePlatformErrorForIpc(error)
+  }
+}
+
 export function registerPlatformIpc(): void {
   ipcMain.handle('platform:login', async () => {
-    return openBossLogin()
+    return handlePlatformAction(openBossLogin)
   })
 
   ipcMain.handle('platform:checkLogin', async () => {
-    return checkBossPlatformLogin()
+    return handlePlatformAction(checkBossPlatformLogin)
   })
 
-  ipcMain.handle('platform:fetchJobs', async () => {
-    return fetchBossJobs()
+  ipcMain.handle('platform:fetchJobs', async (_event, preferenceId: string) => {
+    return handlePlatformAction(() => fetchBossJobs(preferenceId))
   })
 
   ipcMain.handle('platform:getStatus', () => {
@@ -43,6 +52,6 @@ export function registerPlatformIpc(): void {
   })
 
   ipcMain.handle('platform:debugSnapshot', async () => {
-    return exportBossDomSnapshot()
+    return handlePlatformAction(exportBossDomSnapshot)
   })
 }

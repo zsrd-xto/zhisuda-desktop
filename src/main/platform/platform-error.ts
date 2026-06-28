@@ -1,4 +1,6 @@
-import type { PlatformErrorCode } from '../../shared/types/platform'
+import type { PlatformErrorCode, PlatformIpcError } from '../../shared/types/platform'
+
+const IPC_ERROR_MARKER = '__zhisuda_platform_error__'
 
 export class PlatformError extends Error {
   readonly errorCode: PlatformErrorCode
@@ -20,4 +22,35 @@ export function toPlatformError(error: unknown, fallbackCode: PlatformErrorCode 
   }
   const message = error instanceof Error ? error.message : '未知错误'
   return new PlatformError(message, fallbackCode)
+}
+
+/** Electron IPC 仅保留 Error.message，结构化错误码编码进 message */
+export function serializePlatformErrorForIpc(error: unknown): Error {
+  const platformError = toPlatformError(error)
+  const payload: PlatformIpcError = {
+    message: platformError.message,
+    errorCode: platformError.errorCode
+  }
+  return new Error(`${IPC_ERROR_MARKER}${JSON.stringify(payload)}`)
+}
+
+export function parsePlatformErrorFromIpc(error: unknown): PlatformIpcError {
+  if (!(error instanceof Error)) {
+    return { message: '未知错误', errorCode: 'UNKNOWN' }
+  }
+
+  if (!error.message.startsWith(IPC_ERROR_MARKER)) {
+    return { message: error.message, errorCode: 'UNKNOWN' }
+  }
+
+  try {
+    const parsed = JSON.parse(error.message.slice(IPC_ERROR_MARKER.length)) as PlatformIpcError
+    if (parsed.message && parsed.errorCode) {
+      return parsed
+    }
+  } catch {
+    // fall through
+  }
+
+  return { message: error.message, errorCode: 'UNKNOWN' }
 }

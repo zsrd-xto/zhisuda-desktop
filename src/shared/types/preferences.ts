@@ -1,10 +1,11 @@
-export interface JobPreferences {
+export interface JobPreference {
   id: string
   userId: string
-  targetPositions: string[]
-  targetCities: string[]
-  salaryMin: number | null
-  salaryMax: number | null
+  name: string
+  targetPosition: string
+  targetCity: string
+  salaryMin: number
+  salaryMax: number
   industries: string[]
   companySizes: string[]
   requireInsurance: boolean
@@ -12,14 +13,16 @@ export interface JobPreferences {
   excludeOutsource: boolean
   blacklistCompanies: string[]
   excludeKeywords: string[]
+  createdAt: string
   updatedAt: string
 }
 
-export interface JobPreferencesInput {
-  targetPositions: string[]
-  targetCities: string[]
-  salaryMin: number | null
-  salaryMax: number | null
+export interface JobPreferenceInput {
+  id?: string
+  targetPosition: string
+  targetCity: string
+  salaryMin: number
+  salaryMax: number
   industries: string[]
   companySizes: string[]
   requireInsurance: boolean
@@ -29,12 +32,27 @@ export interface JobPreferencesInput {
   excludeKeywords: string[]
 }
 
-export function createDefaultPreferencesInput(): JobPreferencesInput {
+/** @deprecated 使用 JobPreference */
+export type JobPreferences = JobPreference
+
+/** @deprecated 使用 JobPreferenceInput */
+export type JobPreferencesInput = JobPreferenceInput
+
+export function buildPreferenceName(
+  targetPosition: string,
+  targetCity: string,
+  salaryMin: number,
+  salaryMax: number
+): string {
+  return `${targetPosition.trim()}·${targetCity.trim()}·${salaryMin}-${salaryMax}K`
+}
+
+export function createDefaultPreferenceInput(): JobPreferenceInput {
   return {
-    targetPositions: [],
-    targetCities: [],
-    salaryMin: null,
-    salaryMax: null,
+    targetPosition: '',
+    targetCity: '',
+    salaryMin: 0,
+    salaryMax: 0,
     industries: [],
     companySizes: [],
     requireInsurance: true,
@@ -43,4 +61,47 @@ export function createDefaultPreferencesInput(): JobPreferencesInput {
     blacklistCompanies: [],
     excludeKeywords: []
   }
+}
+
+/** @deprecated 使用 createDefaultPreferenceInput */
+export function createDefaultPreferencesInput(): JobPreferenceInput {
+  return createDefaultPreferenceInput()
+}
+
+export interface FetchCriteriaSnapshot {
+  preferenceId: string
+  name: string
+  targetPosition: string
+  targetCity: string
+  salaryMin: number
+  salaryMax: number
+  industries: string[]
+  companySizes: string[]
+  requireInsurance: boolean
+  requireWeekendOff: boolean
+  excludeOutsource: boolean
+  blacklistCompanies: string[]
+  excludeKeywords: string[]
+}
+
+export function preferenceToFetchCriteria(preference: JobPreference): FetchCriteriaSnapshot {
+  return {
+    preferenceId: preference.id,
+    name: preference.name,
+    targetPosition: preference.targetPosition,
+    targetCity: preference.targetCity,
+    salaryMin: preference.salaryMin,
+    salaryMax: preference.salaryMax,
+    industries: preference.industries,
+    companySizes: preference.companySizes,
+    requireInsurance: preference.requireInsurance,
+    requireWeekendOff: preference.requireWeekendOff,
+    excludeOutsource: preference.excludeOutsource,
+    blacklistCompanies: preference.blacklistCompanies,
+    excludeKeywords: preference.excludeKeywords
+  }
+}
+
+export function buildConditionsLabel(criteria: FetchCriteriaSnapshot): string {
+  return `${criteria.targetPosition} · ${criteria.targetCity} · ${criteria.salaryMin}-${criteria.salaryMax}K`
 }

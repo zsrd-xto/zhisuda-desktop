@@ -89,6 +89,7 @@ export function buildListUrl(api: PageRecipeApi, page: number): string {
   let url = api.listUrl
     .replace(/\{page\}/g, String(page))
     .replace(/\{city\}/g, api.queryParams?.city ?? '')
+    .replace(/\{query\}/g, encodeURIComponent(api.queryParams?.query ?? ''))
 
   const query = params.toString()
   if (query && !url.includes('?')) {

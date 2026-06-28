@@ -1,17 +1,21 @@
 import { randomUUID } from 'crypto'
 import type Database from 'better-sqlite3'
-import type { JobPreferences, JobPreferencesInput } from '../../shared/types/preferences'
-import { createDefaultPreferencesInput } from '../../shared/types/preferences'
+import type { JobPreference, JobPreferenceInput } from '../../shared/types/preferences'
+import {
+  buildPreferenceName,
+  createDefaultPreferenceInput
+} from '../../shared/types/preferences'
 import { getDb } from '../db/database'
 import { getOrCreateProfile } from './user.service'
 
-interface PreferencesRow {
+interface PreferenceRow {
   id: string
   user_id: string
-  target_positions: string
-  target_cities: string
-  salary_min: number | null
-  salary_max: number | null
+  name: string
+  target_position: string
+  target_city: string
+  salary_min: number
+  salary_max: number
   industries: string
   company_sizes: string
   require_insurance: number
@@ -19,23 +23,23 @@ interface PreferencesRow {
   exclude_outsource: number
   blacklist_companies: string
   exclude_keywords: string
+  created_at: string
   updated_at: string
 }
 
 function parseJsonArray(value: string): string[] {
   const parsed = JSON.parse(value) as unknown
-  if (!Array.isArray(parsed)) {
-    return []
-  }
+  if (!Array.isArray(parsed)) return []
   return parsed.filter((item): item is string => typeof item === 'string')
 }
 
-function mapRowToPreferences(row: PreferencesRow): JobPreferences {
+function mapRow(row: PreferenceRow): JobPreference {
   return {
     id: row.id,
     userId: row.user_id,
-    targetPositions: parseJsonArray(row.target_positions),
-    targetCities: parseJsonArray(row.target_cities),
+    name: row.name,
+    targetPosition: row.target_position,
+    targetCity: row.target_city,
     salaryMin: row.salary_min,
     salaryMax: row.salary_max,
     industries: parseJsonArray(row.industries),
@@ -45,52 +49,23 @@ function mapRowToPreferences(row: PreferencesRow): JobPreferences {
     excludeOutsource: row.exclude_outsource === 1,
     blacklistCompanies: parseJsonArray(row.blacklist_companies),
     excludeKeywords: parseJsonArray(row.exclude_keywords),
+    createdAt: row.created_at,
     updatedAt: row.updated_at
   }
 }
 
-function getPreferencesRow(userId: string, db: Database.Database): PreferencesRow | undefined {
-  return db
-    .prepare(
-      `SELECT id, user_id, target_positions, target_cities, salary_min, salary_max,
-              industries, company_sizes, require_insurance, require_weekend_off,
-              exclude_outsource, blacklist_companies, exclude_keywords, updated_at
-       FROM job_preferences
-       WHERE user_id = ?`
-    )
-    .get(userId) as PreferencesRow | undefined
-}
+const SELECT_FIELDS = `SELECT id, user_id, name, target_position, target_city, salary_min, salary_max,
+  industries, company_sizes, require_insurance, require_weekend_off, exclude_outsource,
+  blacklist_companies, exclude_keywords, created_at, updated_at FROM job_preferences`
 
-export function getPreferences(db: Database.Database = getDb()): JobPreferences | null {
-  const user = getOrCreateProfile(db)
-  const row = getPreferencesRow(user.id, db)
-  return row ? mapRowToPreferences(row) : null
-}
-
-export function getPreferencesOrDefault(db: Database.Database = getDb()): JobPreferences {
-  const existing = getPreferences(db)
-  if (existing) {
-    return existing
+function validatePreferenceInput(input: JobPreferenceInput): void {
+  if (!input.targetPosition.trim()) {
+    throw new Error('请填写目标岗位')
   }
-
-  const user = getOrCreateProfile(db)
-  const defaults = createDefaultPreferencesInput()
-  return {
-    id: '',
-    userId: user.id,
-    ...defaults,
-    updatedAt: ''
+  if (!input.targetCity.trim()) {
+    throw new Error('请填写目标城市')
   }
-}
-
-function validatePreferencesInput(input: JobPreferencesInput): void {
-  if (input.targetPositions.length === 0) {
-    throw new Error('请至少填写一个目标岗位')
-  }
-  if (input.targetCities.length === 0) {
-    throw new Error('请至少填写一个目标城市')
-  }
-  if (input.salaryMin === null || input.salaryMax === null) {
+  if (input.salaryMin <= 0 || input.salaryMax <= 0) {
     throw new Error('请填写薪资范围')
   }
   if (input.salaryMin > input.salaryMax) {
@@ -98,17 +73,10 @@ function validatePreferencesInput(input: JobPreferencesInput): void {
   }
 }
 
-export function savePreferences(
-  input: JobPreferencesInput,
-  db: Database.Database = getDb()
-): JobPreferences {
-  validatePreferencesInput(input)
-  const user = getOrCreateProfile(db)
-  const existing = getPreferencesRow(user.id, db)
-
-  const payload = [
-    JSON.stringify(input.targetPositions),
-    JSON.stringify(input.targetCities),
+function serializeInput(input: JobPreferenceInput): unknown[] {
+  return [
+    input.targetPosition.trim(),
+    input.targetCity.trim(),
     input.salaryMin,
     input.salaryMax,
     JSON.stringify(input.industries),
@@ -119,38 +87,121 @@ export function savePreferences(
     JSON.stringify(input.blacklistCompanies),
     JSON.stringify(input.excludeKeywords)
   ]
+}
 
-  if (existing) {
-    db.prepare(
-      `UPDATE job_preferences
-       SET target_positions = ?, target_cities = ?, salary_min = ?, salary_max = ?,
-           industries = ?, company_sizes = ?, require_insurance = ?, require_weekend_off = ?,
-           exclude_outsource = ?, blacklist_companies = ?, exclude_keywords = ?,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`
-    ).run(...payload, existing.id)
+export function listPreferences(db: Database.Database = getDb()): JobPreference[] {
+  const user = getOrCreateProfile(db)
+  const rows = db.prepare(`${SELECT_FIELDS} WHERE user_id = ? ORDER BY updated_at DESC`).all(
+    user.id
+  ) as PreferenceRow[]
+  return rows.map(mapRow)
+}
 
-    const updated = getPreferencesRow(user.id, db)
-    if (!updated) {
-      throw new Error('保存求职偏好失败')
+export function getPreference(
+  preferenceId: string,
+  db: Database.Database = getDb()
+): JobPreference | null {
+  const user = getOrCreateProfile(db)
+  const row = db
+    .prepare(`${SELECT_FIELDS} WHERE id = ? AND user_id = ?`)
+    .get(preferenceId, user.id) as PreferenceRow | undefined
+  return row ? mapRow(row) : null
+}
+
+export function getPreferenceOrThrow(
+  preferenceId: string,
+  db: Database.Database = getDb()
+): JobPreference {
+  const preference = getPreference(preferenceId, db)
+  if (!preference) {
+    throw new Error('求职偏好不存在')
+  }
+  return preference
+}
+
+/** @deprecated 使用 listPreferences */
+export function getPreferences(db: Database.Database = getDb()): JobPreference | null {
+  return listPreferences(db)[0] ?? null
+}
+
+/** @deprecated 使用 listPreferences */
+export function getPreferencesOrDefault(db: Database.Database = getDb()): JobPreference {
+  const existing = listPreferences(db)[0]
+  if (existing) return existing
+
+  const user = getOrCreateProfile(db)
+  const defaults = createDefaultPreferenceInput()
+  return {
+    id: '',
+    userId: user.id,
+    name: '',
+    ...defaults,
+    createdAt: '',
+    updatedAt: ''
+  }
+}
+
+export function savePreference(
+  input: JobPreferenceInput,
+  db: Database.Database = getDb()
+): JobPreference {
+  validatePreferenceInput(input)
+  const user = getOrCreateProfile(db)
+  const name = buildPreferenceName(
+    input.targetPosition,
+    input.targetCity,
+    input.salaryMin,
+    input.salaryMax
+  )
+  const payload = serializeInput(input)
+
+  if (input.id) {
+    const existing = getPreference(input.id, db)
+    if (!existing) {
+      throw new Error('求职偏好不存在')
     }
-    return mapRowToPreferences(updated)
+
+    db.prepare(
+      `UPDATE job_preferences SET
+        name = ?, target_position = ?, target_city = ?, salary_min = ?, salary_max = ?,
+        industries = ?, company_sizes = ?, require_insurance = ?, require_weekend_off = ?,
+        exclude_outsource = ?, blacklist_companies = ?, exclude_keywords = ?,
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND user_id = ?`
+    ).run(name, ...payload, input.id, user.id)
+
+    return getPreferenceOrThrow(input.id, db)
   }
 
   const id = randomUUID()
   db.prepare(
     `INSERT INTO job_preferences (
-      id, user_id, target_positions, target_cities, salary_min, salary_max,
+      id, user_id, name, target_position, target_city, salary_min, salary_max,
       industries, company_sizes, require_insurance, require_weekend_off,
       exclude_outsource, blacklist_companies, exclude_keywords
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, user.id, ...payload)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, user.id, name, ...payload)
 
-  const created = getPreferencesRow(user.id, db)
-  if (!created) {
-    throw new Error('保存求职偏好失败')
-  }
-  return mapRowToPreferences(created)
+  return getPreferenceOrThrow(id, db)
+}
+
+/** @deprecated 使用 savePreference */
+export function savePreferences(
+  input: JobPreferenceInput,
+  db: Database.Database = getDb()
+): JobPreference {
+  return savePreference(input, db)
+}
+
+export function deletePreference(
+  preferenceId: string,
+  db: Database.Database = getDb()
+): boolean {
+  const user = getOrCreateProfile(db)
+  const result = db
+    .prepare('DELETE FROM job_preferences WHERE id = ? AND user_id = ?')
+    .run(preferenceId, user.id)
+  return result.changes > 0
 }
 
 export function parseTagInput(value: string): string[] {

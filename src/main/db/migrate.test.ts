@@ -6,10 +6,7 @@ describe('runMigrations', () => {
   it('applies migrations and records schema_migrations', () => {
     const db = openDatabase(':memory:')
 
-    expect(listMigrationVersions()).toContain('001_init')
-    expect(listMigrationVersions()).toContain('002_resumes')
-    expect(listMigrationVersions()).toContain('003_preferences_platform')
-    expect(listMigrationVersions()).toContain('004_platform_profiles')
+    expect(listMigrationVersions()).toContain('005_preferences_multi')
 
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
@@ -21,6 +18,7 @@ describe('runMigrations', () => {
         'users',
         'resumes',
         'job_preferences',
+        'job_fetch_batches',
         'platform_accounts',
         'platform_page_profiles',
         'platform_extract_runs',
@@ -37,7 +35,8 @@ describe('runMigrations', () => {
         '001_init',
         '002_resumes',
         '003_preferences_platform',
-        '004_platform_profiles'
+        '004_platform_profiles',
+        '005_preferences_multi'
       ])
     )
 
@@ -47,7 +46,7 @@ describe('runMigrations', () => {
       .prepare('SELECT version FROM schema_migrations ORDER BY version')
       .all() as Array<{ version: string }>
 
-    expect(appliedAgain).toHaveLength(4)
+    expect(appliedAgain).toHaveLength(5)
 
     db.close()
   })

@@ -23,6 +23,18 @@
 - `zpData.jobInfo`：`jobName`, `salaryDesc`, `postDescription`, `showSkills`
 - `zpData.brandComInfo`：`brandName`, `stageName`, `scaleName`, `industryName`, `introduce`
 
+## 运行时抓取（与求职偏好）
+
+有求职偏好时，列表抓取使用 **搜索 API**（非推荐列表）：
+
+| 用途 | URL | 参数 |
+|------|-----|------|
+| 关键词搜索 | `GET /wapi/zpgeek/search/joblist.json` | `query`（岗位名）、`city`（城市 code）、`page`、`pageSize` |
+
+城市中文名 → Boss city code 见 `src/main/platform/boss/boss-city-codes.ts`。抓取后在客户端按偏好做薪资/城市/排除词过滤。
+
+抓取结果写入 `job_fetch_batches` + `job_listings`（按批次保留 7 天，每日上限 500 条岗位）。
+
 ## 反爬与频率限制
 
 Boss 对高频 API / 自动化行为敏感（code 36 等）。运行时策略见 `src/main/platform/boss/boss-config.ts` 中 `BOSS_RATE_LIMIT`：

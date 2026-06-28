@@ -58,6 +58,7 @@ export type PlatformErrorCode =
   | 'PARTIAL_DATA'
   | 'TIMEOUT'
   | 'RATE_LIMIT'
+  | 'DAILY_QUOTA_EXCEEDED'
   | 'CAPTCHA'
   | 'NETWORK'
   | 'UNKNOWN'
@@ -83,6 +84,9 @@ export interface FetchJobsMeta {
   channel: ExtractChannel
   partial?: boolean
   errorCode?: PlatformErrorCode
+  batchId?: string
+  conditionsLabel?: string
+  preferenceId?: string
 }
 
 export interface FetchJobsResult {
@@ -119,28 +123,4 @@ export interface BossDomSnapshotResult {
   apiProbes: BossDomApiProbe[]
   detailProbe: Record<string, unknown> | null
   filePath: string
-}
-
-export interface BossDomApiProbe {
-  name: string
-  url: string
-  httpStatus?: number
-  code?: number
-  message?: string
-  listLength?: number
-  hasMore?: boolean
-  firstItemKeys?: string[]
-  sampleFirstItem?: Record<string, unknown> | null
-  error?: string
-}
-
-export interface BossDomSnapshotResult {
-  capturedAt: string
-  pageUrl: string
-  pageTitle: string
-  selectorProbe: Record<string, number>
-  sampleJobLinks: string[]
-  apiProbes: BossDomApiProbe[]
-  detailProbe: Record<string, unknown> | null
-  savedPath: string
 }

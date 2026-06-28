@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { closeDatabase, initDatabase } from './db'
 import { registerIpcHandlers } from './ipc'
 import { ensureDefaultProfiles } from './services/platform-profile.service'
+import { cleanupExpiredBatches } from './services/job-listing.service'
 import { registerBossViewResizeHandler } from './services/platform.service'
 import { setMainWindow } from './window/main-window'
 
@@ -59,6 +60,7 @@ app.whenReady().then(() => {
 
   initDatabase()
   ensureDefaultProfiles()
+  cleanupExpiredBatches()
   registerIpcHandlers()
   createWindow()
 

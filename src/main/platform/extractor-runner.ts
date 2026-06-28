@@ -1,4 +1,7 @@
 import type { WebContents } from 'electron'
+import type { FetchCriteriaSnapshot } from '../../shared/types/preferences'
+import { buildConditionsLabel } from '../../shared/types/preferences'
+import { resolveBossCityCode } from './boss/boss-city-codes'
 import { BOSS_JOBS_FETCH_LIMIT, BOSS_RATE_LIMIT } from './boss/boss-config'
 import { getBossView, loadBossJobsPage } from './boss/boss-adapter'
 import {
@@ -10,6 +13,7 @@ import {
   parseDetailItem,
   parseListItems
 } from './api-extractor'
+import { filterJobsByCriteria } from './job-filter'
 import { PlatformError } from './platform-error'
 import {
   assertFetchCooldown,
@@ -21,7 +25,10 @@ import { compileDomListScript } from './script-compiler'
 import type { PageRecipe } from './types'
 import type { ExtractChannel, FetchJobsResult, JobDetail, PlatformErrorCode } from '../../shared/types/platform'
 import { getActiveProfile, listActiveProfileVersions } from '../services/platform-profile.service'
-import { logExtractRun, upsertJobListings } from '../services/job-listing.service'
+import { assertDailyQuota, logExtractRun, saveFetchResult } from '../services/job-listing.service'
+
+const BOSS_SEARCH_LIST_URL =
+  'https://www.zhipin.com/wapi/zpgeek/search/joblist.json?page={page}&pageSize=15&city={city}&query={query}'
 
 function asString(value: unknown): string {
   if (value === null || value === undefined) return ''
@@ -77,6 +84,29 @@ function mergeDetail(base: JobDetail, detail: Record<string, unknown>): JobDetai
 
 function needsDetail(job: JobDetail): boolean {
   return !job.responsibilities || !job.companyScale
+}
+
+function buildListRecipeForCriteria(baseRecipe: PageRecipe, criteria: FetchCriteriaSnapshot): PageRecipe {
+  const cityCode = resolveBossCityCode(criteria.targetCity)
+  const api = baseRecipe.api
+
+  if (!api) {
+    throw new PlatformError('列表 API 未配置', 'API_CHANGED')
+  }
+
+  return {
+    ...baseRecipe,
+    api: {
+      ...api,
+      listUrl: BOSS_SEARCH_LIST_URL,
+      listJsonPath: api.listJsonPath ?? 'zpData.jobList',
+      hasMorePath: api.hasMorePath ?? 'zpData.hasMore',
+      queryParams: {
+        city: cityCode,
+        query: criteria.targetPosition
+      }
+    }
+  }
 }
 
 async function fetchListViaApi(
@@ -186,8 +216,11 @@ async function fetchListViaDom(
   return raw.map((item) => mapListItem(item))
 }
 
-export async function runBossJobExtraction(): Promise<FetchJobsResult> {
+export async function runBossJobExtraction(
+  criteria: FetchCriteriaSnapshot
+): Promise<FetchJobsResult> {
   assertFetchCooldown()
+  assertDailyQuota(1)
 
   const listProfile = getActiveProfile('boss', 'job_list')
   const detailProfile = getActiveProfile('boss', 'job_detail')
@@ -196,6 +229,7 @@ export async function runBossJobExtraction(): Promise<FetchJobsResult> {
     throw new PlatformError('未找到 Boss 列表页配置，请运行 import-profile', 'API_CHANGED')
   }
 
+  const searchRecipe = buildListRecipeForCriteria(listProfile.recipe, criteria)
   const view = getBossView()
   await loadBossJobsPage()
   const webContents = view.webContents
@@ -206,7 +240,7 @@ export async function runBossJobExtraction(): Promise<FetchJobsResult> {
 
   try {
     try {
-      jobs = await fetchListViaApi(webContents, listProfile.recipe)
+      jobs = await fetchListViaApi(webContents, searchRecipe)
     } catch (apiError) {
       channel = 'dom'
       if (!listProfile.recipe.dom) {
@@ -215,21 +249,36 @@ export async function runBossJobExtraction(): Promise<FetchJobsResult> {
       jobs = await fetchListViaDom(webContents, listProfile.recipe)
     }
 
+    jobs = filterJobsByCriteria(jobs, criteria)
+
     if (jobs.length === 0) {
-      throw new PlatformError('未抓取到岗位', 'DOM_CHANGED')
+      throw new PlatformError(
+        `未找到符合「${buildConditionsLabel(criteria)}」的岗位，请调整偏好或稍后在 Boss 网页搜索后重试`,
+        'DOM_CHANGED'
+      )
     }
 
     if (detailProfile?.recipe.api?.detailUrl) {
       channel = channel === 'dom' ? 'hybrid' : 'api'
       const detailResult = await fetchDetailsViaApi(webContents, detailProfile.recipe, jobs)
-      jobs = detailResult.jobs
+      jobs = filterJobsByCriteria(detailResult.jobs, criteria)
       partial = detailResult.partial
     }
 
     const versions = listActiveProfileVersions('boss')
     const profileVersion = versions.job_list ?? listProfile.version
+    const fetchedAt = new Date().toISOString()
 
-    upsertJobListings(jobs, 'boss', profileVersion)
+    const batch = saveFetchResult({
+      preferenceId: criteria.preferenceId,
+      platform: 'boss',
+      criteria,
+      channel,
+      profileVersion,
+      jobs,
+      fetchedAt
+    })
+
     logExtractRun({
       profileId: listProfile.id,
       channel,
@@ -242,11 +291,14 @@ export async function runBossJobExtraction(): Promise<FetchJobsResult> {
     return {
       platform: 'boss',
       jobs,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt,
       meta: {
         profileVersion,
         channel,
-        partial: partial || undefined
+        partial: partial || undefined,
+        batchId: batch.id,
+        conditionsLabel: batch.conditionsLabel,
+        preferenceId: criteria.preferenceId
       }
     }
   } catch (error) {
@@ -278,6 +330,7 @@ export function mapPlatformErrorCodeToMessage(code: PlatformErrorCode): string {
     PARTIAL_DATA: '部分职位详情不完整',
     TIMEOUT: '页面加载超时，请稍后重试',
     RATE_LIMIT: '操作过于频繁，请稍后在 Boss 网页完成验证',
+    DAILY_QUOTA_EXCEEDED: '今日岗位抓取已达上限，请明天再试',
     CAPTCHA: '需要完成验证码',
     NETWORK: '网络请求失败，请检查连接',
     UNKNOWN: '未知错误'

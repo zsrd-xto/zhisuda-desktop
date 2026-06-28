@@ -1,13 +1,21 @@
 import { ipcMain } from 'electron'
-import type { JobPreferencesInput } from '../../shared/types/preferences'
-import { getPreferencesOrDefault, savePreferences } from '../services/preferences.service'
+import type { JobPreferenceInput } from '../../shared/types/preferences'
+import {
+  deletePreference,
+  listPreferences,
+  savePreference
+} from '../services/preferences.service'
 
 export function registerPreferencesIpc(): void {
-  ipcMain.handle('preferences:get', () => {
-    return getPreferencesOrDefault()
+  ipcMain.handle('preferences:list', () => {
+    return listPreferences()
   })
 
-  ipcMain.handle('preferences:save', (_event, input: JobPreferencesInput) => {
-    return savePreferences(input)
+  ipcMain.handle('preferences:save', (_event, input: JobPreferenceInput) => {
+    return savePreference(input)
+  })
+
+  ipcMain.handle('preferences:delete', (_event, preferenceId: string) => {
+    return deletePreference(preferenceId)
   })
 }

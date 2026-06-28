@@ -1,21 +1,24 @@
 import { BrowserView } from 'electron'
-import type { BossDomSnapshotResult, BossViewLayout, FetchJobsResult, JobDetail, PlatformLoginStatus } from '../../shared/types/platform'
+import type { BossDomSnapshotResult, BossViewLayout, FetchJobsResult, PlatformLoginStatus } from '../../shared/types/platform'
 import { DEFAULT_BOSS_VIEW_HEIGHT } from '../../shared/types/platform'
 import { captureBossDomSnapshot } from '../platform/boss/boss-dom-capture'
+import { runBossJobExtraction } from '../platform/extractor-runner'
+import { PlatformError } from '../platform/platform-error'
 import { getMainWindow } from '../window/main-window'
 import {
   checkBossLoginByCookies,
   checkBossLoginStatus,
-  fetchBossJobListings,
   getBossView,
   getBossViewBounds,
   loadBossLoginPage,
   setBossViewRecreateHandler
 } from '../platform/boss/boss-adapter'
+import { preferenceToFetchCriteria } from '../../shared/types/preferences'
 import {
   getPlatformLoginStatus,
   upsertPlatformLogin
 } from '../services/platform-account.service'
+import { getPreferenceOrThrow } from '../services/preferences.service'
 
 let attachedView: BrowserView | null = null
 let currentLayout: BossViewLayout = { expanded: false, height: 0 }
@@ -128,44 +131,23 @@ export async function checkBossPlatformLogin(): Promise<PlatformLoginStatus> {
   return upsertPlatformLogin('boss', loggedIn)
 }
 
-export async function fetchBossJobs(): Promise<FetchJobsResult> {
+export async function fetchBossJobs(preferenceId: string): Promise<FetchJobsResult> {
   const dbLoggedIn = getPlatformLoginStatus('boss').loggedIn
   const cookieLoggedIn = await checkBossLoginByCookies()
 
   if (!dbLoggedIn && !cookieLoggedIn) {
-    throw new Error('请先登录 Boss 直聘')
+    throw new PlatformError('请先登录 Boss 直聘', 'NOT_LOGGED_IN')
   }
+
+  const preference = getPreferenceOrThrow(preferenceId)
+  const criteria = preferenceToFetchCriteria(preference)
 
   setBossViewLayout({ expanded: true, height: DEFAULT_BOSS_VIEW_HEIGHT })
   attachBossView()
 
-  const jobs = await fetchBossJobListings()
-  if (jobs.length === 0) {
-    throw new Error('未抓取到岗位，请在底部面板确认职位列表已加载后重试')
-  }
-
+  const result = await runBossJobExtraction(criteria)
   await upsertPlatformLogin('boss', true)
-
-  const details: JobDetail[] = jobs.map((job) => ({
-    id: job.id,
-    title: job.title,
-    salary: job.salary,
-    city: job.city,
-    jobUrl: job.url,
-    companyName: job.company,
-    responsibilities: job.description,
-    isOutsource: job.isOutsource
-  }))
-
-  return {
-    platform: 'boss',
-    jobs: details,
-    fetchedAt: new Date().toISOString(),
-    meta: {
-      profileVersion: 'legacy-dom',
-      channel: 'dom'
-    }
-  }
+  return result
 }
 
 export function getBossPlatformStatus(): PlatformLoginStatus {

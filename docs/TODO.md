@@ -189,9 +189,10 @@ Then 展示结构化预览（基本信息/工作经历/项目/教育等）
 #### Phase 1b — 偏好与 Boss 登录（W3–4）
 
 - [x] 求职偏好 CRUD（城市/薪资/岗位/黑名单/关键词等）
+- [x] **多条偏好**：单条 = 岗位 + 城市 + 薪资，名称 `岗位·城市·min-maxK`（migration 005）
 - [x] Boss BrowserView：登录页加载、UA 伪装、partition 持久化
 - [x] 登录状态检测（`platform:login` / `platform:checkLogin`）
-- [x] 岗位列表抓取（`platform:fetchJobs`，上限 100）
+- [x] 岗位列表抓取（`platform:fetchJobs(preferenceId)`，按偏好搜索 Boss API）
 - [x] 从 spike 迁移 Boss 配置至 `main/platform/boss/`
 
 **验收**：
@@ -208,11 +209,21 @@ Then 展示结构化预览（基本信息/工作经历/项目/教育等）
 - [x] 种子配置 `docs/boss-dom/seed-profile-v1.json` + API 样例
 - [x] DB migration 004：`platform_page_profiles` / `platform_extract_runs` / `job_listings`
 - [x] `PageRecipe` 类型、`ScriptCompiler`、`ApiExtractor`、`ExtractorRunner`（代码已落地）
-- [ ] 人工采样确认后更新 fieldMap，并 `import-profile` 入库
-- [ ] `platform:fetchJobs` 切换至 `ExtractorRunner`（API 优先 + 限流）
-- [ ] 结构化错误码透传 UI（`NOT_LOGGED_IN` / `API_CHANGED` / `DOM_CHANGED` / `RATE_LIMIT` 等）
-- [ ] `tools/boss-explorer/validate-profile.mjs` 校验 JSONPath
-- [ ] 预研槽位：resume_upload / resume_manage / chat / apply（仅配置，不实现）
+- [x] 人工采样确认后更新 fieldMap，并 `import-profile` 入库（seed-profile-v1 + 启动时 `ensureDefaultProfiles`）
+- [x] `platform:fetchJobs` 切换至 `ExtractorRunner`（API 优先 + 限流）
+- [x] 结构化错误码透传 UI（`NOT_LOGGED_IN` / `API_CHANGED` / `DOM_CHANGED` / `RATE_LIMIT` 等）
+- [x] `tools/boss-explorer/validate-profile.mjs` 校验 JSONPath
+- [x] 预研槽位：resume_upload / resume_manage / chat / apply（仅配置，不实现）
+
+#### Phase 1b++ — 偏好驱动抓取与批次持久化
+
+- [x] 抓取前选择求职偏好（仅 1 条时默认选中）
+- [x] Boss 搜索 API（`query` + 城市码）替代写死推荐列表
+- [x] 客户端过滤：城市/岗位名/薪资重叠/外包/黑名单/排除词
+- [x] `job_fetch_batches` + `job_listings.batch_id` 批次存储
+- [x] 岗位页：抓取条件 + 时间、历史批次切换、分页（20 条/页）
+- [x] 切换导航后从 DB 恢复最新批次
+- [x] 数据保留 7 天；每日岗位写入上限 500 条（`DAILY_QUOTA_EXCEEDED`）
 
 **访问频率约束**（`BOSS_RATE_LIMIT`）：
 
@@ -483,11 +494,15 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 | `resume:upload` | R→M | 1a | 上传并解析简历 |
 | `resume:get` | R→M | 1a | 获取当前简历 |
 | `resume:update` | R→M | 1a | 更新简历字段 |
-| `preferences:get` | R→M | 1b | 获取求职偏好 |
-| `preferences:save` | R→M | 1b | 保存求职偏好 |
+| `preferences:list` | R→M | 1b | 求职偏好列表 |
+| `preferences:save` | R→M | 1b | 创建/更新求职偏好 |
+| `preferences:delete` | R→M | 1b | 删除求职偏好 |
+| `jobs:listBatches` | R→M | 1b++ | 抓取批次历史（分页） |
+| `jobs:getLatestBatch` | R→M | 1b++ | 最近一次抓取批次 |
+| `jobs:getBatchJobs` | R→M | 1b++ | 批次内岗位列表（分页） |
 | `platform:login` | R→M | 1b | 打开 Boss WebView 登录 |
 | `platform:checkLogin` | R→M | 1b | 检测登录状态 |
-| `platform:fetchJobs` | R→M | 1b | 触发岗位抓取 |
+| `platform:fetchJobs` | R→M | 1b++ | 按 `preferenceId` 触发岗位抓取 |
 | `platform:debugSnapshot` | R→M | 1b+ | 导出 Boss DOM/API 结构（开发采样） |
 | `platform:hideView` | R→M | 1b | 隐藏底部 WebView |
 | `platform:setViewLayout` | R→M | 1b | 展开/收起底部面板 |
@@ -509,7 +524,8 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 | Phase 0 工程脚手架 | ✅ 已完成 | electron-vite + IPC + SQLite |
 | Phase 1a 基础数据 | ✅ 已完成 | 本地账号 + 简历上传解析编辑 |
 | Phase 1b 偏好与登录 | ✅ 已完成 | 偏好 CRUD + Boss WebView IPC |
-| Phase 1b+ Boss 结构化适配 | 🔄 进行中 | 应用内采样 + 双通道抓取 |
+| Phase 1b+ Boss 结构化适配 | ✅ 已完成 | 双通道抓取 + 错误码透传 + profile 校验 |
+| Phase 1b++ 偏好驱动抓取 | ✅ 已完成 | 多偏好 + 搜索 API + 批次持久化 |
 | Phase 1c 核心投递 | ⬜ 未开始 | 匹配 + L1 投递 + 看板 |
 | Phase 1d 分发与更新 | ⬜ 未开始 | 打包 + 官网 + updater |
 | Phase 1e 稳定化 | ⬜ 未开始 | HR 提醒 + 协议 + 打磨 |
@@ -517,9 +533,9 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 | Phase 3 v0.3 | ⬜ 未开始 | AI 简历优化 |
 | Phase 4 v0.4+ | ⬜ 未开始 | 全平台 + 商业化 |
 
-**当前焦点**：Phase 1b+ — 应用内采样确认 fieldMap，接入双通道抓取。
+**当前焦点**：Phase 1c — 规则匹配 + L1 批量投递。
 
-**最近更新**：2026-06-28 — 新增 `platform:debugSnapshot`、Boss 结构化适配路线与限流策略。
+**最近更新**：2026-06-28 — Phase 1b++：多条求职偏好、按偏好搜索抓取、批次持久化与分页展示。
 
 ---
 
@@ -527,6 +543,7 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 
 | 日期 | 变更 |
 |------|------|
+| 2026-06-28 | Phase 1b++：migration 005、多偏好 CRUD、搜索 API 抓取、job_fetch_batches、7 天/500 条配额 |
 | 2026-06-28 | Phase 1b+：应用内 DOM/API 导出、seed-profile、migration 004、双通道架构 |
 | 2026-06-27 | Phase 1b 完成：求职偏好 IPC、Boss BrowserView、platform 登录/抓取、迁移 003 |
 | 2026-06-27 | Phase 1a 完成：昵称、简历 IPC、PDF/Word 解析、编辑预览、自动保存、清除数据 |
