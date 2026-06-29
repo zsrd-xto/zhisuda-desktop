@@ -7,6 +7,7 @@ import { registerIpcHandlers } from './ipc'
 import { ensureDefaultProfiles } from './services/platform-profile.service'
 import { cleanupExpiredBatches } from './services/job-listing.service'
 import { registerBossViewResizeHandler } from './services/platform.service'
+import { initAutoUpdater } from './services/updater.service'
 import { setMainWindow } from './window/main-window'
 
 if (process.env.ZHISUDA_USER_DATA) {
@@ -62,6 +63,7 @@ app.whenReady().then(() => {
   ensureDefaultProfiles()
   cleanupExpiredBatches()
   registerIpcHandlers()
+  initAutoUpdater()
   createWindow()
 
   app.on('activate', () => {

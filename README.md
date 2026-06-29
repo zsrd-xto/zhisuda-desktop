@@ -49,7 +49,11 @@ npm run dev
 | `npm run lint` | ESLint 检查 |
 | `npm run format` | Prettier 格式化 `src/` |
 | `npm run typecheck` | TypeScript 类型检查 |
-| `npm run build:win` | 构建 Windows 安装包（Phase 1d） |
+| `npm run dist` | 构建并打包当前平台安装包 |
+| `npm run dist:win` | 构建 Windows 安装包（`职速达-Setup-x.y.z.exe`） |
+| `npm run dist:mac` | 构建 macOS 安装包（`.dmg`） |
+| `npm run sync:release-info` | 从 `dist/` 生成官网 `releases.json`（含 SHA256） |
+| `npm run build:win` | 同 `dist:win` |
 
 ---
 
@@ -105,6 +109,27 @@ npm test
 
 ---
 
+## 打包与发布
+
+```bash
+# Windows 安装包
+npm run dist:win
+
+# 同步版本与 SHA256 到官网
+npm run sync:release-info
+
+# 构建官网（需先在 website/ 安装依赖）
+cd website && npm install && npm run build
+```
+
+发布流程：推送 `v*` tag → GitHub Actions 构建 Win/Mac 安装包并创建 Release → 可选上传 CDN 更新 `latest.yml`。
+
+自动更新：已安装客户端启动 5 秒后检查更新（`electron-updater`），设置页可手动检查、下载、跳过版本。
+
+官网源码位于 [`website/`](website/)，部署静态产物至 Vercel 或 OSS。
+
+---
+
 ## 项目结构（概要）
 
 ```
@@ -139,7 +164,8 @@ zhisuda-desktop/
 ## 开发进度
 
 - **Phase 0**（工程脚手架）：已完成
-- **Phase 1a**（基础数据）：已完成
-- **当前焦点**：Phase 1b — 求职偏好 + Boss WebView 登录
+- **Phase 1c**（核心投递）：已完成
+- **Phase 1d**（分发与更新）：已完成
+- **当前焦点**：Phase 1e — 稳定化与内测打磨
 
 详见 [TODO.md](./docs/TODO.md)。

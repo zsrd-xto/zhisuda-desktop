@@ -3,6 +3,7 @@ import { registerJobsIpc } from './jobs.ipc'
 import { registerPlatformIpc } from './platform.ipc'
 import { registerPreferencesIpc } from './preferences.ipc'
 import { registerResumeIpc } from './resume.ipc'
+import { registerUpdaterIpc } from './updater.ipc'
 import { registerUserIpc } from './user.ipc'
 
 export function registerIpcHandlers(): void {
@@ -12,4 +13,5 @@ export function registerIpcHandlers(): void {
   registerJobsIpc()
   registerPlatformIpc()
   registerDeliveryIpc()
+  registerUpdaterIpc()
 }

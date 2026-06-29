@@ -604,7 +604,7 @@ And 请求内容不经过职速达服务器（直接用户→模型提供商）
 
 **技术方案**：静态站（Astro/Next.js）+ CDN/OSS 托管安装包 + `latest.yml` 供 electron-updater 使用。
 
-详见：[官网规划文档](../../marketing/ai-job-delivery/website-plan.md)
+详见：[官网规划文档](docs/website-plan.md)
 
 ---
 

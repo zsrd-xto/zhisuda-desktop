@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { UpdateBanner } from '@renderer/components/UpdateBanner'
 
 export type AppPage = 'home' | 'resume' | 'preferences' | 'jobs' | 'settings'
 
@@ -43,6 +44,7 @@ export function Layout({ currentPage, onNavigate, children }: LayoutProps): Reac
           </nav>
         </div>
       </header>
+      <UpdateBanner />
       <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
     </div>
   )

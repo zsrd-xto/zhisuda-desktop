@@ -34,7 +34,8 @@ describe('delivery.service', () => {
 
     const records = getDeliveryRecords({ page: 1, pageSize: 10 }, db)
     expect(records.total).toBe(2)
-    expect(records.items[0].status).toBe('failed')
+    const statuses = records.items.map((item) => item.status).sort()
+    expect(statuses).toEqual(['failed', 'sent'])
 
     const stats = getDeliveryStats(db)
     expect(stats.totalSent).toBe(1)

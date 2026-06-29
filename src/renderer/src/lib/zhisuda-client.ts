@@ -21,6 +21,7 @@ import type {
   PlatformLoginStatus
 } from '@shared/types/platform'
 import type { Resume, ResumeParsedData } from '@shared/types/resume'
+import type { UpdaterCheckResult, UpdaterStatusEvent } from '@shared/types/updater'
 import type { UserProfile } from '@shared/types/user'
 
 const IPC_ERROR_MARKER = '__zhisuda_platform_error__'
@@ -135,6 +136,19 @@ export const zhisudaClient = {
         return () => undefined
       }
       return window.zhisuda.onDeliveryProgress(callback)
+    }
+  },
+  updater: {
+    getVersion: (): Promise<string> => invoke('updater:getVersion'),
+    check: (): Promise<UpdaterCheckResult> => invoke('updater:check'),
+    download: (): Promise<boolean> => invoke('updater:download'),
+    install: (): Promise<void> => invoke('updater:install'),
+    skipVersion: (version: string): Promise<boolean> => invoke('updater:skipVersion', version),
+    onStatus: (callback: (event: UpdaterStatusEvent) => void): (() => void) => {
+      if (!window.zhisuda?.onUpdaterStatus) {
+        return () => undefined
+      }
+      return window.zhisuda.onUpdaterStatus(callback)
     }
   }
 }

@@ -1,5 +1,6 @@
-appId: com.electron.app
-productName: app
+appId: com.zhisuda.desktop
+productName: 职速达
+copyright: Copyright © 2026 职速达
 directories:
   buildResources: build
 files:
@@ -9,17 +10,31 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!website/**'
+  - '!e2e/**'
+  - '!docs/**'
+  - '!tools/**'
 asarUnpack:
   - 'resources/**'
+  - 'node_modules/better-sqlite3/**'
 win:
-  executableName: app
+  executableName: 职速达
+  target:
+    - nsis
+  icon: build/icon.ico
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
+  artifactName: 职速达-Setup-${version}.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
 mac:
   entitlementsInherit: build/entitlements.mac.plist
+  icon: build/icon.icns
+  target:
+    - dmg
+  category: public.app-category.productivity
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
@@ -27,17 +42,16 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: 职速达-${version}-mac.${ext}
 linux:
   target:
     - AppImage
-    - snap
     - deb
-  maintainer: electronjs.org
+  maintainer: xt0913@yeah.net
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}
-npmRebuild: false
+npmRebuild: true
 publish:
   provider: generic
-  url: https://example.com/auto-updates
+  url: https://download.zhishuda.com/releases/

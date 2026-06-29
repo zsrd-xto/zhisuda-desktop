@@ -1,0 +1,143 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import releases from '../../public/releases.json'
+
+const features = [
+  {
+    title: '智能筛选',
+    description: '按城市、薪资、关键词匹配岗位，减少无效浏览。'
+  },
+  {
+    title: '确认即投',
+    description: 'L1 半自动模式，投递前由你确认，你说了算。'
+  },
+  {
+    title: '数据看板',
+    description: '投递进度、成功率一目了然，求职更有数。'
+  },
+  {
+    title: '本地安全',
+    description: '简历与 Cookie 仅存本机，不上传 Boss 密码。'
+  }
+]
+
+const faqs = [
+  {
+    q: '职速达和 Boss 直聘什么关系？',
+    a: '职速达是独立的求职辅助工具，通过本地浏览器登录 Boss 直聘，不隶属于 Boss 官方。'
+  },
+  {
+    q: '会不会被封号？',
+    a: '任何第三方辅助工具均存在平台风险。我们控制操作频率并支持人工确认，但无法保证零风险，请自行评估。'
+  },
+  {
+    q: '数据存在哪里？',
+    a: 'MVP 阶段简历、偏好、投递记录均存储在您的本机 SQLite 数据库中。'
+  },
+  {
+    q: '免费版和付费版区别？',
+    a: '当前内测版本全部功能免费。未来可能推出 Pro 订阅，届时会提前公告。'
+  },
+  {
+    q: '支持哪些平台？',
+    a: 'MVP 仅支持 Boss 直聘。51job、猎聘等平台在后续版本规划中。'
+  }
+]
+---
+
+<BaseLayout title="Boss直聘求职助手" description="职速达 — Boss直聘求职助手，智能筛选确认即投">
+  <main>
+    <section class="mx-auto max-w-6xl px-6 py-20 text-center">
+      <p class="text-sm font-medium uppercase tracking-widest text-emerald-400">职速达</p>
+      <h1 class="mt-4 text-4xl font-bold text-white md:text-5xl">好工作，职速达</h1>
+      <p class="mx-auto mt-4 max-w-2xl text-lg text-slate-400">
+        智能筛选岗位，确认即投，求职更高效
+      </p>
+      <a
+        href="#download"
+        class="mt-8 inline-block rounded-xl bg-emerald-500 px-8 py-3 text-base font-semibold text-slate-950 transition hover:bg-emerald-400"
+      >
+        免费下载
+      </a>
+    </section>
+
+    <section id="download" class="border-y border-slate-800 bg-slate-900/40 py-16">
+      <div class="mx-auto max-w-6xl px-6">
+        <h2 class="text-2xl font-semibold text-white">下载安装包</h2>
+        <p class="mt-2 text-slate-400">当前版本 v{releases.version} · 系统要求 Windows 10+ / macOS 12+</p>
+        <div class="mt-8 grid gap-6 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+            <h3 class="text-lg font-medium text-white">Windows</h3>
+            <p class="mt-2 text-sm text-slate-400">{releases.windows?.fileName}</p>
+            {releases.windows?.url && (
+              <a
+                href={releases.windows.url}
+                class="mt-4 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400"
+              >
+                下载 Windows 版
+              </a>
+            )}
+            {releases.windows?.sha256 && (
+              <p class="mt-4 break-all font-mono text-xs text-slate-500">
+                SHA256: {releases.windows.sha256}
+              </p>
+            )}
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+            <h3 class="text-lg font-medium text-white">macOS</h3>
+            <p class="mt-2 text-sm text-slate-400">{releases.mac?.fileName}</p>
+            {releases.mac?.url && (
+              <a
+                href={releases.mac.url}
+                class="mt-4 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400"
+              >
+                下载 macOS 版
+              </a>
+            )}
+            {releases.mac?.sha256 && (
+              <p class="mt-4 break-all font-mono text-xs text-slate-500">
+                SHA256: {releases.mac.sha256}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-6 py-16">
+      <h2 class="text-2xl font-semibold text-white">功能亮点</h2>
+      <div class="mt-8 grid gap-6 md:grid-cols-2">
+        {features.map((item) => (
+          <article class="rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
+            <h3 class="text-lg font-medium text-emerald-300">{item.title}</h3>
+            <p class="mt-2 text-slate-400">{item.description}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="border-y border-slate-800 bg-brand-950/30 py-16">
+      <div class="mx-auto max-w-6xl px-6">
+        <h2 class="text-2xl font-semibold text-white">安全说明</h2>
+        <ul class="mt-6 space-y-3 text-slate-300">
+          <li>· 不收集 Boss 直聘账号密码</li>
+          <li>· 招聘平台 Cookie 本地加密存储</li>
+          <li>· 可随时在设置中清除全部本地数据</li>
+          <li>· 崩溃上报默认关闭，需您主动开启（Phase 1e）</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-6 py-16">
+      <h2 class="text-2xl font-semibold text-white">常见问题</h2>
+      <div class="mt-8 space-y-4">
+        {faqs.map((item) => (
+          <details class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+            <summary class="cursor-pointer font-medium text-slate-200">{item.q}</summary>
+            <p class="mt-3 text-sm text-slate-400">{item.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  </main>
+</BaseLayout>

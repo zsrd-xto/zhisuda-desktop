@@ -260,17 +260,17 @@ And 失败时提示人工接管
 
 #### Phase 1d — 分发与更新（W7–8）
 
-- [ ] `electron-builder` Win / macOS 打包配置
-- [ ] `electron-updater` + `latest.yml` 对接 CDN
-- [ ] 应用图标与安装包命名（`职速达-Setup-x.y.z.exe`）
-- [ ] 官网 v1（可独立仓 `zhisuda-website/`）：Hero、下载区、功能亮点、FAQ、法律文档
-- [ ] GitHub Actions release workflow（tag `v*` 触发）
+- [x] `electron-builder` Win / macOS 打包配置
+- [x] `electron-updater` + `latest.yml` 对接 CDN
+- [x] 应用图标与安装包命名（`职速达-Setup-x.y.z.exe`）
+- [x] 官网 v1（`website/`）：Hero、下载区、功能亮点、FAQ、法律文档
+- [x] GitHub Actions release workflow（tag `v*` 触发）
 
 **验收**：
 
-- [ ] 本地 `npm run dist` 产出安装包
-- [ ] 官网可下载安装包并校验 SHA256
-- [ ] 旧版应用可检测并提示更新
+- [x] 本地 `npm run dist` 产出安装包
+- [x] 官网可下载安装包并校验 SHA256（`npm run sync:release-info`）
+- [x] 旧版应用可检测并提示更新（打包后 `electron-updater` 启动检查）
 
 #### Phase 1e — 稳定化（W9–10）
 
@@ -529,15 +529,15 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 | Phase 1b+ Boss 结构化适配 | ✅ 已完成 | 双通道抓取 + 错误码透传 + profile 校验 |
 | Phase 1b++ 偏好驱动抓取 | ✅ 已完成 | 多偏好 + 搜索 API + 批次持久化 |
 | Phase 1c 核心投递 | ✅ 已完成 | L1 批量投递、人工接管、投递记录与看板 |
-| Phase 1d 分发与更新 | ⬜ 未开始 | 打包 + 官网 + updater |
+| Phase 1d 分发与更新 | ✅ 已完成 | 打包 + 官网 + updater |
 | Phase 1e 稳定化 | ⬜ 未开始 | HR 提醒 + 协议 + 打磨 |
 | Phase 2 v0.2 | ⬜ 未开始 | 多平台 + AI + 付费 |
 | Phase 3 v0.3 | ⬜ 未开始 | AI 简历优化 |
 | Phase 4 v0.4+ | ⬜ 未开始 | 全平台 + 商业化 |
 
-**当前焦点**：Phase 1d — 打包分发与官网。
+**当前焦点**：Phase 1e — 稳定化与内测打磨。
 
-**最近更新**：2026-06-28 — 筛选与打分隔离、抓取参数可覆盖、偏好/岗位页 UI 优化（migration 006/007）。
+**最近更新**：2026-06-29 — Phase 1d 完成：electron-builder 打包、electron-updater、官网 v1、GitHub Actions release。
 
 ---
 
@@ -545,6 +545,7 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 
 | 日期 | 变更 |
 |------|------|
+| 2026-06-29 | Phase 1d 完成：electron-builder 打包、electron-updater、官网 v1、CI release workflow |
 | 2026-06-29 | Phase 1c 完成：L1 批量投递、人工接管、投递记录、岗位勾选/星标/黑名单、个人中心看板 |
 | 2026-06-28 | Phase 1c 起步：matching.service 筛选/打分隔离、migration 006/007、抓取参数覆盖、偏好与岗位页 UI |
 | 2026-06-28 | Phase 1b++：migration 005、多偏好 CRUD、搜索 API 抓取、job_fetch_batches、7 天/500 条配额 |

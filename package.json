@@ -1,10 +1,14 @@
 {
   "name": "zhisuda-desktop",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "职速达 — AI 驱动的桌面端求职辅助工具",
   "main": "./out/main/index.js",
   "author": "向涛 <xt0913@yeah.net>",
-  "homepage": "https://zhisuda.com",
+  "homepage": "https://zhishuda.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zsrd-xto/zhisuda-desktop.git"
+  },
   "scripts": {
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "lint": "eslint --cache .",
@@ -21,15 +25,21 @@
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "node scripts/postinstall.mjs",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
     "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux"
+    "build:win": "npm run dist:win",
+    "build:mac": "npm run dist:mac",
+    "build:linux": "npm run dist:linux",
+    "sync:release-info": "node scripts/sync-release-info.mjs"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "better-sqlite3": "^11.10.0",
+    "electron-updater": "^6.6.2",
     "dommatrix": "^0.1.1",
     "mammoth": "^1.12.0",
     "pdf-parse": "^2.4.5"

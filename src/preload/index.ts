@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { DeliveryProgressEvent } from '../shared/types/delivery'
+import type { UpdaterStatusEvent } from '../shared/types/updater'
 
 export type IpcChannel =
   | 'user:getProfile'
@@ -32,10 +33,16 @@ export type IpcChannel =
   | 'delivery:listDelivered'
   | 'delivery:toggleStar'
   | 'delivery:appendBlacklist'
+  | 'updater:check'
+  | 'updater:download'
+  | 'updater:install'
+  | 'updater:skipVersion'
+  | 'updater:getVersion'
 
 export interface ZhisudaApi {
   invoke: <T>(channel: IpcChannel, ...args: unknown[]) => Promise<T>
   onDeliveryProgress: (callback: (event: DeliveryProgressEvent) => void) => () => void
+  onUpdaterStatus: (callback: (event: UpdaterStatusEvent) => void) => () => void
 }
 
 const zhisuda: ZhisudaApi = {
@@ -47,6 +54,15 @@ const zhisuda: ZhisudaApi = {
     ipcRenderer.on('delivery:progress', handler)
     return () => {
       ipcRenderer.removeListener('delivery:progress', handler)
+    }
+  },
+  onUpdaterStatus: (callback) => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: UpdaterStatusEvent): void => {
+      callback(payload)
+    }
+    ipcRenderer.on('updater:status', handler)
+    return () => {
+      ipcRenderer.removeListener('updater:status', handler)
     }
   }
 }

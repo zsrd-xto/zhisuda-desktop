@@ -1,0 +1,3 @@
+provider: generic
+url: https://download.zhishuda.com/releases/
+updaterCacheDirName: zhisuda-desktop-updater
