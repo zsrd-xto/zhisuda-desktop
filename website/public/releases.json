@@ -1,10 +1,14 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publishedAt": "2026-06-29",
   "windows": {
-    "fileName": "Zhisuda-Setup-0.1.0.exe",
-    "sha256": "67528e1fca7f8c78f49f63261ee79adf065fb9f06c04cfe76a57108f05dd673f",
-    "url": "https://github.com/zsrd-xto/zhisuda-desktop/releases/download/v0.1.0/Zhisuda-Setup-0.1.0.exe"
+    "fileName": "Zhisuda-Setup-0.1.1.exe",
+    "sha256": "待 CI 构建后由 npm run sync:release-info 更新",
+    "url": "https://github.com/zsrd-xto/zhisuda-desktop/releases/download/v0.1.1/Zhisuda-Setup-0.1.1.exe"
   },
-  "mac": null
+  "mac": {
+    "fileName": "Zhisuda-0.1.1-mac.dmg",
+    "sha256": "待 CI 构建后由 npm run sync:release-info 更新",
+    "url": "https://github.com/zsrd-xto/zhisuda-desktop/releases/download/v0.1.1/Zhisuda-0.1.1-mac.dmg"
+  }
 }

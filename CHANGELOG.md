@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1] - 2026-06-29
+
+### Fixed
+
+- 安装包文件名改为英文（`Zhisuda-Setup-x.y.z.exe`），修复 GitHub Releases 中文文件名截断导致下载 404
+- Vercel 官网构建：独立 tsconfig、法律文档路径修复
+
 ## [0.1.0] - 2026-06-29
 
 ### Added

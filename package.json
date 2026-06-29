@@ -1,6 +1,6 @@
 {
   "name": "zhisuda-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "职速达 — AI 驱动的桌面端求职辅助工具",
   "main": "./out/main/index.js",
   "author": "向涛 <xt0913@yeah.net>",
