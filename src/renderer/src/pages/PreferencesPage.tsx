@@ -2,17 +2,30 @@ import { useEffect, useState } from 'react'
 import type { JobPreference, JobPreferenceInput } from '@shared/types/preferences'
 import {
   buildPreferenceName,
-  createDefaultPreferenceInput
+  createDefaultPreferenceInput,
+  joinCommaSeparatedList,
+  parseCommaSeparatedList,
+  PRESET_EXCLUDE_KEYWORDS
 } from '@shared/types/preferences'
 import { zhisudaClient } from '@renderer/lib/zhisuda-client'
+import { FILTER_RULE_LINES, RulesInfoBanner } from '@renderer/components/RulesInfoBanner'
 
 const inputClass =
   'w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-emerald-500 focus:ring-2'
+
+function mergeLegacyExcludeKeywords(preference: JobPreference): string[] {
+  const keywords = [...preference.excludeKeywords]
+  if (preference.excludeOutsource && !keywords.some((k) => /外包|外派/.test(k))) {
+    keywords.push('外包')
+  }
+  return keywords
+}
 
 function preferenceToForm(preference: JobPreference): JobPreferenceInput {
   return {
     id: preference.id,
     targetPosition: preference.targetPosition,
+    titleMatchThreshold: preference.titleMatchThreshold,
     targetCity: preference.targetCity,
     salaryMin: preference.salaryMin,
     salaryMax: preference.salaryMax,
@@ -20,9 +33,9 @@ function preferenceToForm(preference: JobPreference): JobPreferenceInput {
     companySizes: preference.companySizes,
     requireInsurance: preference.requireInsurance,
     requireWeekendOff: preference.requireWeekendOff,
-    excludeOutsource: preference.excludeOutsource,
     blacklistCompanies: preference.blacklistCompanies,
-    excludeKeywords: preference.excludeKeywords
+    excludeKeywords: mergeLegacyExcludeKeywords(preference),
+    responsibilityKeywords: preference.responsibilityKeywords
   }
 }
 
@@ -118,6 +131,18 @@ export function PreferencesPage(): React.JSX.Element {
     }
   }
 
+  const togglePresetExcludeKeyword = (keyword: string, checked: boolean): void => {
+    setForm((prev) => {
+      const next = new Set(prev.excludeKeywords)
+      if (checked) {
+        next.add(keyword)
+      } else {
+        next.delete(keyword)
+      }
+      return { ...prev, excludeKeywords: [...next] }
+    })
+  }
+
   const previewName =
     form.targetPosition && form.targetCity && form.salaryMin > 0 && form.salaryMax > 0
       ? buildPreferenceName(form.targetPosition, form.targetCity, form.salaryMin, form.salaryMax)
@@ -180,17 +205,44 @@ export function PreferencesPage(): React.JSX.Element {
       <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
         <p className="text-xs text-slate-500">名称预览：{previewName}</p>
 
-        <label className="block space-y-2 text-sm">
-          <span className="text-slate-300">目标岗位 *</span>
-          <input
-            className={inputClass}
-            placeholder="AI应用开发"
-            value={form.targetPosition}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, targetPosition: event.target.value.trim() }))
-            }
-          />
-        </label>
+        <RulesInfoBanner title="筛选规则" lines={FILTER_RULE_LINES} />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block space-y-2 text-sm">
+            <span className="text-slate-300">目标岗位 *</span>
+            <input
+              className={inputClass}
+              placeholder="AI应用开发"
+              value={form.targetPosition}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, targetPosition: event.target.value.trim() }))
+              }
+            />
+          </label>
+          <label className="block space-y-2 text-sm">
+            <span
+              className="text-slate-300"
+              title="岗位名称 Jaccard 相似度低于此值的岗位将被过滤"
+            >
+              名称匹配阈值 (%)
+            </span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              className={inputClass}
+              value={form.titleMatchThreshold ?? 20}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  titleMatchThreshold: event.target.value
+                    ? Math.min(100, Math.max(0, Number(event.target.value)))
+                    : 0
+                }))
+              }
+            />
+          </label>
+        </div>
 
         <label className="block space-y-2 text-sm">
           <span className="text-slate-300">目标城市 *</span>
@@ -236,52 +288,65 @@ export function PreferencesPage(): React.JSX.Element {
         </div>
 
         <label className="block space-y-2 text-sm">
-          <span className="text-slate-300">黑名单公司</span>
-          <textarea
-            className={`${inputClass} min-h-20`}
-            placeholder="每行一个公司名称"
-            value={form.blacklistCompanies.join('\n')}
+          <span className="text-slate-300">岗位职责关键词</span>
+          <input
+            className={inputClass}
+            placeholder="大模型，RAG，Agent，Python"
+            value={joinCommaSeparatedList(form.responsibilityKeywords)}
             onChange={(event) =>
               setForm((prev) => ({
                 ...prev,
-                blacklistCompanies: event.target.value
-                  .split('\n')
-                  .map((item) => item.trim())
-                  .filter(Boolean)
+                responsibilityKeywords: parseCommaSeparatedList(event.target.value)
               }))
             }
           />
+          <p className="text-xs text-slate-500">多个关键词用逗号分隔，用于 Boss 岗位页公司打分（每命中 +10 分）</p>
         </label>
 
         <label className="block space-y-2 text-sm">
-          <span className="text-slate-300">排除关键词</span>
+          <span className="text-slate-300">黑名单公司</span>
           <input
             className={inputClass}
-            placeholder="外包，销售，驻场"
-            value={form.excludeKeywords.join('，')}
+            placeholder="某公司，另一家公司"
+            value={joinCommaSeparatedList(form.blacklistCompanies)}
             onChange={(event) =>
               setForm((prev) => ({
                 ...prev,
-                excludeKeywords: event.target.value
-                  .split(/[,，、]/)
-                  .map((item) => item.trim())
-                  .filter(Boolean)
+                blacklistCompanies: parseCommaSeparatedList(event.target.value)
               }))
             }
           />
+          <p className="text-xs text-slate-500">多个公司名称用逗号分隔，命中即硬过滤</p>
         </label>
 
-        <div className="flex flex-wrap gap-4 text-sm text-slate-300">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.excludeOutsource}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, excludeOutsource: event.target.checked }))
-              }
-            />
-            排除外包岗位
-          </label>
+        <div className="space-y-2 text-sm">
+          <span className="text-slate-300">排除关键词</span>
+          <div className="flex flex-wrap gap-3">
+            {PRESET_EXCLUDE_KEYWORDS.map((keyword) => (
+              <label key={keyword} className="flex items-center gap-2 text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={form.excludeKeywords.includes(keyword)}
+                  onChange={(event) => togglePresetExcludeKeyword(keyword, event.target.checked)}
+                />
+                {keyword}
+              </label>
+            ))}
+          </div>
+          <input
+            className={inputClass}
+            placeholder="可自定义，如：外派，实习"
+            value={joinCommaSeparatedList(form.excludeKeywords)}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                excludeKeywords: parseCommaSeparatedList(event.target.value)
+              }))
+            }
+          />
+          <p className="text-xs text-slate-500">
+            勾选快捷项会自动追加到文本框；岗位标题、公司名或职责描述含任一关键词即硬过滤
+          </p>
         </div>
 
         <button

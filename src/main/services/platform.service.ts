@@ -1,5 +1,5 @@
 import { BrowserView } from 'electron'
-import type { BossDomSnapshotResult, BossViewLayout, FetchJobsResult, PlatformLoginStatus } from '../../shared/types/platform'
+import type { BossDomSnapshotResult, BossViewLayout, FetchJobsResult, FetchSearchOverrides, PlatformLoginStatus } from '../../shared/types/platform'
 import { DEFAULT_BOSS_VIEW_HEIGHT } from '../../shared/types/platform'
 import { captureBossDomSnapshot } from '../platform/boss/boss-dom-capture'
 import { runBossJobExtraction } from '../platform/extractor-runner'
@@ -13,7 +13,7 @@ import {
   loadBossLoginPage,
   setBossViewRecreateHandler
 } from '../platform/boss/boss-adapter'
-import { preferenceToFetchCriteria } from '../../shared/types/preferences'
+import { preferenceToFetchCriteria, applyFetchSearchOverrides } from '../../shared/types/preferences'
 import {
   getPlatformLoginStatus,
   upsertPlatformLogin
@@ -131,7 +131,10 @@ export async function checkBossPlatformLogin(): Promise<PlatformLoginStatus> {
   return upsertPlatformLogin('boss', loggedIn)
 }
 
-export async function fetchBossJobs(preferenceId: string): Promise<FetchJobsResult> {
+export async function fetchBossJobs(
+  preferenceId: string,
+  overrides?: FetchSearchOverrides
+): Promise<FetchJobsResult> {
   const dbLoggedIn = getPlatformLoginStatus('boss').loggedIn
   const cookieLoggedIn = await checkBossLoginByCookies()
 
@@ -140,7 +143,7 @@ export async function fetchBossJobs(preferenceId: string): Promise<FetchJobsResu
   }
 
   const preference = getPreferenceOrThrow(preferenceId)
-  const criteria = preferenceToFetchCriteria(preference)
+  const criteria = applyFetchSearchOverrides(preferenceToFetchCriteria(preference), overrides)
 
   setBossViewLayout({ expanded: true, height: DEFAULT_BOSS_VIEW_HEIGHT })
   attachBossView()

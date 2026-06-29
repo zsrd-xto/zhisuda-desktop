@@ -320,7 +320,9 @@ export function getBatchJobs(
 
   return {
     batch,
-    jobs: rows.map(mapListingRow),
+    jobs: rows
+      .map(mapListingRow)
+      .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0)),
     total: totalRow.c,
     page,
     pageSize

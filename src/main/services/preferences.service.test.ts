@@ -49,6 +49,7 @@ describe('preferences.service', () => {
     )
 
     expect(first.name).toBe('AI应用开发·深圳·20-25K')
+    expect(first.titleMatchThreshold).toBe(20)
     expect(second.name).toBe('前端开发·北京·15-30K')
     expect(listPreferences(db)).toHaveLength(2)
   })
@@ -64,7 +65,7 @@ describe('preferences.service', () => {
         targetCity: '北京',
         salaryMin: 20,
         salaryMax: 30,
-        excludeOutsource: true
+        excludeKeywords: ['外包']
       },
       db
     )
@@ -77,13 +78,14 @@ describe('preferences.service', () => {
         targetCity: '上海',
         salaryMin: 25,
         salaryMax: 35,
-        excludeOutsource: true
+        excludeKeywords: ['外包', '驻场']
       },
       db
     )
 
     expect(updated.name).toBe('全栈工程师·上海·25-35K')
     expect(getPreference(saved.id, db)?.targetCity).toBe('上海')
+    expect(getPreference(saved.id, db)?.excludeOutsource).toBe(true)
 
     expect(deletePreference(saved.id, db)).toBe(true)
     expect(listPreferences(db)).toHaveLength(0)

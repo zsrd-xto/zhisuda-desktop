@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import type { BossViewLayout } from '../../shared/types/platform'
+import type { BossViewLayout, FetchSearchOverrides } from '../../shared/types/platform'
 import { serializePlatformErrorForIpc } from '../platform/platform-error'
 import {
   checkBossPlatformLogin,
@@ -29,9 +29,12 @@ export function registerPlatformIpc(): void {
     return handlePlatformAction(checkBossPlatformLogin)
   })
 
-  ipcMain.handle('platform:fetchJobs', async (_event, preferenceId: string) => {
-    return handlePlatformAction(() => fetchBossJobs(preferenceId))
-  })
+  ipcMain.handle(
+    'platform:fetchJobs',
+    async (_event, preferenceId: string, overrides?: FetchSearchOverrides) => {
+      return handlePlatformAction(() => fetchBossJobs(preferenceId, overrides))
+    }
+  )
 
   ipcMain.handle('platform:getStatus', () => {
     return getBossPlatformStatus()

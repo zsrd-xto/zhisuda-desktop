@@ -34,16 +34,21 @@ const criteria: FetchCriteriaSnapshot = {
   preferenceId: 'pref-1',
   name: 'AI应用开发·深圳·20-25K',
   targetPosition: 'AI应用开发',
+  titleMatchThreshold: 20,
   targetCity: '深圳',
   salaryMin: 20,
   salaryMax: 25,
+  fetchQuery: 'AI应用开发',
+  fetchCity: '深圳',
+  fetchSalaryMin: 20,
   industries: [],
   companySizes: [],
   requireInsurance: true,
   requireWeekendOff: false,
   excludeOutsource: false,
   blacklistCompanies: [],
-  excludeKeywords: []
+  excludeKeywords: [],
+  responsibilityKeywords: []
 }
 
 describe('job-listing.service', () => {
@@ -67,9 +72,9 @@ describe('job-listing.service', () => {
         companySizes: [],
         requireInsurance: true,
         requireWeekendOff: false,
-        excludeOutsource: false,
         blacklistCompanies: [],
-        excludeKeywords: []
+        excludeKeywords: [],
+        responsibilityKeywords: []
       },
       db
     )

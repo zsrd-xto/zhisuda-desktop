@@ -5,6 +5,7 @@ import type {
   BossDomSnapshotResult,
   BossViewLayout,
   FetchJobsResult,
+  FetchSearchOverrides,
   PlatformErrorCode,
   PlatformIpcError,
   PlatformLoginStatus
@@ -97,8 +98,8 @@ export const zhisudaClient = {
     login: (): Promise<PlatformLoginStatus> => invokePlatform('platform:login'),
     checkLogin: (): Promise<PlatformLoginStatus> => invokePlatform('platform:checkLogin'),
     getStatus: (): Promise<PlatformLoginStatus> => invoke('platform:getStatus'),
-    fetchJobs: (preferenceId: string): Promise<FetchJobsResult> =>
-      invokePlatform('platform:fetchJobs', preferenceId),
+    fetchJobs: (preferenceId: string, overrides?: FetchSearchOverrides): Promise<FetchJobsResult> =>
+      invokePlatform('platform:fetchJobs', preferenceId, overrides),
     hideView: (): Promise<boolean> => invoke('platform:hideView'),
     setViewLayout: (layout: BossViewLayout): Promise<BossViewLayout> =>
       invoke('platform:setViewLayout', layout),

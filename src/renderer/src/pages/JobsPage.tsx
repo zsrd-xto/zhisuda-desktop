@@ -4,7 +4,13 @@ import type { JobFetchBatch } from '@shared/types/jobs'
 import type { JobPreference } from '@shared/types/preferences'
 import { DEFAULT_BOSS_VIEW_HEIGHT } from '@shared/types/platform'
 import type { ExtractChannel, JobDetail, PlatformErrorCode, PlatformLoginStatus } from '@shared/types/platform'
+import { COMPANY_SCORE_RULE_LINES, RulesInfoTooltip } from '@renderer/components/RulesInfoBanner'
 import { PLATFORM_ERROR_LABELS, zhisudaClient } from '@renderer/lib/zhisuda-client'
+
+const inputClass =
+  'w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-emerald-500 focus:ring-2'
+
+const cardClass = 'rounded-2xl border border-slate-800 bg-slate-900/60 p-5'
 
 interface PlatformActionError extends Error {
   errorCode?: PlatformErrorCode
@@ -35,6 +41,9 @@ export function JobsPage(): React.JSX.Element {
   const [message, setMessage] = useState<string | null>(null)
   const [fetchChannel, setFetchChannel] = useState<ExtractChannel | null>(null)
   const [viewExpanded, setViewExpanded] = useState(false)
+  const [fetchQuery, setFetchQuery] = useState('')
+  const [fetchCity, setFetchCity] = useState('')
+  const [fetchSalaryMin, setFetchSalaryMin] = useState(0)
 
   const pageSize = DEFAULT_JOB_PAGE_SIZE
   const totalPages = Math.max(1, Math.ceil(jobTotal / pageSize))
@@ -130,6 +139,14 @@ export function JobsPage(): React.JSX.Element {
     }
   }, [loadBatchJobs])
 
+  useEffect(() => {
+    const preference = preferences.find((item) => item.id === selectedPreferenceId)
+    if (!preference) return
+    setFetchQuery(preference.targetPosition)
+    setFetchCity(preference.targetCity)
+    setFetchSalaryMin(preference.salaryMin)
+  }, [selectedPreferenceId, preferences])
+
   const handleTogglePanel = async (): Promise<void> => {
     clearFeedback()
     await setPanelExpanded(!viewExpanded)
@@ -186,12 +203,21 @@ export function JobsPage(): React.JSX.Element {
       return
     }
 
+    if (!fetchQuery.trim() || !fetchCity.trim() || fetchSalaryMin <= 0) {
+      setError('请填写抓取岗位名称、城市与薪资下限')
+      return
+    }
+
     setBusyAction('fetch')
     clearFeedback()
 
     try {
       await setPanelExpanded(true)
-      const result = await zhisudaClient.platform.fetchJobs(selectedPreferenceId)
+      const result = await zhisudaClient.platform.fetchJobs(selectedPreferenceId, {
+        query: fetchQuery.trim(),
+        city: fetchCity.trim(),
+        salaryMin: fetchSalaryMin
+      })
       const channelLabel =
         result.meta.channel === 'api'
           ? 'API'
@@ -240,50 +266,30 @@ export function JobsPage(): React.JSX.Element {
   }
 
   const singlePreference = preferences.length === 1
+  const actionDisabled = busyAction !== null
 
   return (
     <section
-      className="max-w-2xl space-y-6"
+      className="flex w-full flex-col gap-4"
       style={{ paddingBottom: viewExpanded ? DEFAULT_BOSS_VIEW_HEIGHT + 24 : 0 }}
     >
       <div>
         <h2 className="text-2xl font-semibold text-white">Boss 岗位</h2>
         <p className="mt-1 text-sm text-slate-400">
-          选择求职偏好后抓取，结果按批次永久保存（保留 7 天）。Boss WebView 在窗口底部。
+          选择求职偏好后抓取，结果按批次保存（保留 7 天）。Boss WebView 在窗口底部。
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <span
-            className={`rounded-full px-3 py-1 text-xs ${
-              status?.loggedIn
-                ? 'bg-emerald-500/20 text-emerald-300'
-                : 'bg-slate-800 text-slate-400'
-            }`}
-          >
-            {status?.loggedIn ? '已登录' : '未登录'}
-          </span>
-          {status?.lastLoginAt && (
-            <span className="text-xs text-slate-500">最近登录：{status.lastLoginAt}</span>
-          )}
-          <button
-            type="button"
-            onClick={() => void handleTogglePanel()}
-            disabled={busyAction !== null}
-            className="ml-auto rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {viewExpanded ? '收起 Boss 面板' : '展开 Boss 面板'}
-          </button>
-        </div>
+      <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className={`${cardClass} flex flex-col gap-4`}>
+          <h3 className="text-sm font-medium text-slate-200">抓取设置</h3>
 
-        <div className="mt-4 space-y-3">
           <label className="block text-sm text-slate-300">
             抓取条件（求职偏好）
             <select
               className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
               value={selectedPreferenceId}
-              disabled={singlePreference || busyAction !== null || preferences.length === 0}
+              disabled={singlePreference || actionDisabled || preferences.length === 0}
               onChange={(event) => setSelectedPreferenceId(event.target.value)}
             >
               {preferences.length === 0 ? (
@@ -297,89 +303,156 @@ export function JobsPage(): React.JSX.Element {
               )}
             </select>
           </label>
-        </div>
 
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => void handleLogin()}
-            disabled={busyAction !== null}
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {busyAction === 'login' ? '打开中…' : '打开 Boss 登录'}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleCheckLogin()}
-            disabled={busyAction !== null}
-            className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {busyAction === 'check' ? '检测中…' : '检测登录状态'}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleExportSnapshot()}
-            disabled={busyAction !== null}
-            className="rounded-lg border border-amber-700 px-4 py-2 text-sm text-amber-200 transition hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {busyAction === 'snapshot' ? '导出中…' : '导出页面结构'}
-          </button>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="block text-sm text-slate-300">
+              岗位名称
+              <input
+                className={`${inputClass} mt-1`}
+                placeholder="AI应用开发"
+                value={fetchQuery}
+                disabled={actionDisabled}
+                onChange={(event) => setFetchQuery(event.target.value.trim())}
+              />
+            </label>
+            <label className="block text-sm text-slate-300">
+              城市
+              <input
+                className={`${inputClass} mt-1`}
+                placeholder="深圳"
+                value={fetchCity}
+                disabled={actionDisabled}
+                onChange={(event) => setFetchCity(event.target.value.trim())}
+              />
+            </label>
+            <label className="block text-sm text-slate-300">
+              薪资下限 (K)
+              <input
+                type="number"
+                className={`${inputClass} mt-1`}
+                value={fetchSalaryMin || ''}
+                disabled={actionDisabled}
+                onChange={(event) =>
+                  setFetchSalaryMin(event.target.value ? Number(event.target.value) : 0)
+                }
+              />
+            </label>
+          </div>
+
           <button
             type="button"
             onClick={() => void handleFetchJobs()}
-            disabled={busyAction !== null || preferences.length === 0}
-            className="rounded-lg border border-emerald-700 px-4 py-2 text-sm text-emerald-300 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={actionDisabled || preferences.length === 0}
+            className="w-full rounded-lg border border-emerald-700 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busyAction === 'fetch' ? '抓取中…' : '抓取岗位列表'}
           </button>
         </div>
 
-        {message && <p className="mt-4 text-sm text-emerald-400">{message}</p>}
-        {error && (
-          <div className="mt-4 rounded-lg border border-red-900/60 bg-red-950/30 p-3">
-            {errorCode && (
-              <p className="text-xs font-medium text-red-300">
-                {errorCode} · {PLATFORM_ERROR_LABELS[errorCode]}
-              </p>
+        <div className={`${cardClass} flex flex-col gap-4`}>
+          <h3 className="text-sm font-medium text-slate-200">Boss 登录</h3>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`rounded-full px-3 py-1 text-xs ${
+                status?.loggedIn
+                  ? 'bg-emerald-500/20 text-emerald-300'
+                  : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              {status?.loggedIn ? '已登录' : '未登录'}
+            </span>
+            {status?.lastLoginAt && (
+              <span className="text-xs text-slate-500">最近登录：{status.lastLoginAt}</span>
             )}
-            <p className="mt-1 text-sm text-red-400">{error}</p>
-            {errorCode === 'RATE_LIMIT' && (
-              <p className="mt-2 text-xs text-slate-400">
-                请在底部 Boss 面板中完成验证，并等待 2 分钟后再抓取。
-              </p>
-            )}
+            <button
+              type="button"
+              onClick={() => void handleTogglePanel()}
+              disabled={actionDisabled}
+              className="ml-auto rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {viewExpanded ? '收起 Boss 面板' : '展开 Boss 面板'}
+            </button>
           </div>
-        )}
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void handleLogin()}
+              disabled={actionDisabled}
+              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busyAction === 'login' ? '打开中…' : '打开 Boss 登录'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleCheckLogin()}
+              disabled={actionDisabled}
+              className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busyAction === 'check' ? '检测中…' : '检测登录状态'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleExportSnapshot()}
+              disabled={actionDisabled}
+              className="rounded-lg border border-amber-700 px-4 py-2 text-sm text-amber-200 transition hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busyAction === 'snapshot' ? '导出中…' : '导出页面结构'}
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-medium text-white">岗位列表</h3>
-            {activeBatch && (
-              <div className="mt-2 space-y-1 text-xs text-slate-400">
-                <p>
-                  抓取条件：<span className="text-slate-200">{activeBatch.conditionsLabel}</span>
-                </p>
-                <p>
-                  抓取时间：<span className="text-slate-200">{activeBatch.fetchedAt}</span>
-                  {fetchChannel ? ` · ${fetchChannel}` : ''}
-                </p>
-              </div>
-            )}
-          </div>
+      {message && <p className="text-sm text-emerald-400">{message}</p>}
+      {error && (
+        <div className="rounded-lg border border-red-900/60 bg-red-950/30 p-3">
+          {errorCode && (
+            <p className="text-xs font-medium text-red-300">
+              {errorCode} · {PLATFORM_ERROR_LABELS[errorCode]}
+            </p>
+          )}
+          <p className="mt-1 text-sm text-red-400">{error}</p>
+          {errorCode === 'RATE_LIMIT' && (
+            <p className="mt-2 text-xs text-slate-400">
+              请在底部 Boss 面板中完成验证，并等待 2 分钟后再抓取。
+            </p>
+          )}
+        </div>
+      )}
 
+      <div className={`${cardClass} flex min-h-[min(720px,calc(100vh-22rem))] flex-col`}>
+        <div className="mb-3 flex shrink-0 items-center gap-2">
+          <h3 className="text-lg font-medium text-white">岗位列表</h3>
+          <RulesInfoTooltip title="公司打分规则" lines={COMPANY_SCORE_RULE_LINES} />
+        </div>
+
+        <div className="my-[5px] flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 text-xs text-slate-500">抓取条件</span>
+            <span className="text-sm text-slate-200">
+              {activeBatch?.conditionsLabel ?? '暂无批次'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 text-xs text-slate-500">抓取时间</span>
+            <span className="text-sm text-slate-200">
+              {activeBatch
+                ? `${activeBatch.fetchedAt}${fetchChannel ? ` · ${fetchChannel}` : ''}`
+                : '—'}
+            </span>
+          </div>
           {batches.length > 0 && (
-            <label className="text-xs text-slate-400">
-              历史批次
+            <label className="flex items-center gap-2">
+              <span className="shrink-0 text-xs text-slate-500">历史批次</span>
               <select
-                className="mt-1 block min-w-48 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-white"
+                className="min-w-48 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-white"
                 value={selectedBatchId}
                 onChange={(event) => void handleBatchChange(event.target.value)}
               >
                 {batches.map((batch) => (
                   <option key={batch.id} value={batch.id}>
-                    {batch.conditionsLabel} · {batch.fetchedAt} ({batch.jobCount})
+                    {batch.conditionsLabel} · {batch.jobCount} 条
                   </option>
                 ))}
               </select>
@@ -388,38 +461,57 @@ export function JobsPage(): React.JSX.Element {
         </div>
 
         {jobs.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-400">
+          <p className="text-sm text-slate-400">
             登录并选择偏好后点击「抓取岗位列表」。切换页面后将从数据库恢复最近批次。
           </p>
         ) : (
           <>
-            <ul className="mt-4 space-y-3">
+            <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
               {jobs.map((job) => (
                 <li
                   key={`${job.id}-${job.jobUrl}`}
-                  className="rounded-lg border border-slate-800 bg-slate-950/60 p-4 text-sm"
+                  className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-medium text-white">{job.title}</p>
-                    <p className="text-emerald-300">{job.salary}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {job.matchScore !== undefined && (
+                        <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-300">
+                          得分 {job.matchScore}
+                        </span>
+                      )}
+                      <p className="text-emerald-300">{job.salary}</p>
+                    </div>
                   </div>
                   <p className="mt-1 text-slate-400">
                     {job.companyName}
                     {job.city ? ` · ${job.city}` : ''}
                     {job.companyScale ? ` · ${job.companyScale}` : ''}
                     {job.isOutsource ? ' · 外包' : ''}
+                    {job.hasWeekendOff === true
+                      ? ' · 双休'
+                      : job.hasWeekendOff === false
+                        ? ' · 单休'
+                        : ''}
+                    {job.hasInsurance === true
+                      ? ' · 五险一金'
+                      : job.hasInsurance === false
+                        ? ' · 无五险'
+                        : ''}
                   </p>
                   {job.benefits && job.benefits.length > 0 && (
                     <p className="mt-1 text-xs text-slate-500">{job.benefits.join(' · ')}</p>
                   )}
                   {job.responsibilities && (
-                    <p className="mt-2 line-clamp-2 text-xs text-slate-500">{job.responsibilities}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-slate-500">
+                      {job.responsibilities}
+                    </p>
                   )}
                 </li>
               ))}
             </ul>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
+            <div className="mt-3 flex shrink-0 items-center justify-between text-sm text-slate-400">
               <span>
                 共 {jobTotal} 条 · 第 {jobPage}/{totalPages} 页
               </span>

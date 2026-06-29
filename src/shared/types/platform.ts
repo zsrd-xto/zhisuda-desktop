@@ -9,6 +9,20 @@ export interface JobListing {
   isOutsource?: boolean
 }
 
+export interface MatchBreakdown {
+  keyword: number
+  companyScale: number
+  companyCapital: number
+  companyBenefits: number
+  total: number
+}
+
+export interface FetchSearchOverrides {
+  query: string
+  city: string
+  salaryMin: number
+}
+
 export interface JobDetail {
   id: string
   title: string
@@ -22,6 +36,10 @@ export interface JobDetail {
   companyScale?: string
   registeredCapital?: string
   isOutsource?: boolean
+  hasInsurance?: boolean | null
+  hasWeekendOff?: boolean | null
+  matchScore?: number
+  matchBreakdown?: MatchBreakdown
   securityId?: string
   raw?: Record<string, unknown>
 }

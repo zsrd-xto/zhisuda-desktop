@@ -36,7 +36,9 @@ describe('runMigrations', () => {
         '002_resumes',
         '003_preferences_platform',
         '004_platform_profiles',
-        '005_preferences_multi'
+        '005_preferences_multi',
+        '006_title_match_threshold',
+        '007_responsibility_keywords'
       ])
     )
 
@@ -46,7 +48,7 @@ describe('runMigrations', () => {
       .prepare('SELECT version FROM schema_migrations ORDER BY version')
       .all() as Array<{ version: string }>
 
-    expect(appliedAgain).toHaveLength(5)
+    expect(appliedAgain).toHaveLength(7)
 
     db.close()
   })

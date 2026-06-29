@@ -13,7 +13,7 @@ import {
   parseDetailItem,
   parseListItems
 } from './api-extractor'
-import { filterJobsByCriteria } from './job-filter'
+import { rankJobs } from '../services/matching.service'
 import { PlatformError } from './platform-error'
 import {
   assertFetchCooldown,
@@ -87,7 +87,9 @@ function needsDetail(job: JobDetail): boolean {
 }
 
 function buildListRecipeForCriteria(baseRecipe: PageRecipe, criteria: FetchCriteriaSnapshot): PageRecipe {
-  const cityCode = resolveBossCityCode(criteria.targetCity)
+  const cityName = criteria.fetchCity || criteria.targetCity
+  const cityCode = resolveBossCityCode(cityName)
+  const query = criteria.fetchQuery || criteria.targetPosition
   const api = baseRecipe.api
 
   if (!api) {
@@ -103,7 +105,7 @@ function buildListRecipeForCriteria(baseRecipe: PageRecipe, criteria: FetchCrite
       hasMorePath: api.hasMorePath ?? 'zpData.hasMore',
       queryParams: {
         city: cityCode,
-        query: criteria.targetPosition
+        query
       }
     }
   }
@@ -249,20 +251,20 @@ export async function runBossJobExtraction(
       jobs = await fetchListViaDom(webContents, listProfile.recipe)
     }
 
-    jobs = filterJobsByCriteria(jobs, criteria)
-
-    if (jobs.length === 0) {
-      throw new PlatformError(
-        `未找到符合「${buildConditionsLabel(criteria)}」的岗位，请调整偏好或稍后在 Boss 网页搜索后重试`,
-        'DOM_CHANGED'
-      )
-    }
-
     if (detailProfile?.recipe.api?.detailUrl) {
       channel = channel === 'dom' ? 'hybrid' : 'api'
       const detailResult = await fetchDetailsViaApi(webContents, detailProfile.recipe, jobs)
-      jobs = filterJobsByCriteria(detailResult.jobs, criteria)
+      jobs = detailResult.jobs
       partial = detailResult.partial
+    }
+
+    jobs = rankJobs(jobs, criteria)
+
+    if (jobs.length === 0) {
+      throw new PlatformError(
+        `未找到符合「${buildConditionsLabel(criteria)}」的岗位，请调低名称匹配阈值或调整偏好后重试`,
+        'DOM_CHANGED'
+      )
     }
 
     const versions = listActiveProfileVersions('boss')

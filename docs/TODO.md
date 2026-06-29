@@ -219,7 +219,7 @@ Then 展示结构化预览（基本信息/工作经历/项目/教育等）
 
 - [x] 抓取前选择求职偏好（仅 1 条时默认选中）
 - [x] Boss 搜索 API（`query` + 城市码）替代写死推荐列表
-- [x] 客户端过滤：城市/岗位名/薪资重叠/外包/黑名单/排除词
+- [x] 客户端筛选 + 公司累加打分（`matching.service`：`passesFilter` + `scoreJob`）
 - [x] `job_fetch_batches` + `job_listings.batch_id` 批次存储
 - [x] 岗位页：抓取条件 + 时间、历史批次切换、分页（20 条/页）
 - [x] 切换导航后从 DB 恢复最新批次
@@ -239,8 +239,10 @@ Then 展示结构化预览（基本信息/工作经历/项目/教育等）
 
 #### Phase 1c — 核心投递（W5–6）
 
-- [ ] 规则匹配算法（薪资 40% + 岗位名 25% + 公司 20% + 城市 10% + 关键词 5%）
-- [ ] 岗位列表 UI：匹配度、勾选、黑名单、重点关注
+- [x] 规则匹配：筛选（通过/不通过）与公司累加打分隔离（`matching.service`）
+- [x] 求职偏好：名称匹配阈值、职责关键词、排除词快捷勾选（migration 006/007）
+- [x] 岗位页：可覆盖抓取参数（岗位名/城市/薪资下限）、得分展示、双卡片布局
+- [ ] 岗位列表 UI：勾选、黑名单、重点关注
 - [ ] L1 批量投递（`delivery:applyBatch`，≤10/次，15–30s 间隔）
 - [ ] 投递状态机：待投递 → 投递中 → 已投递 / 失败
 - [ ] 人工接管模式（CAPTCHA / RATE_LIMIT / DOM_CHANGED）
@@ -502,7 +504,7 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 | `jobs:getBatchJobs` | R→M | 1b++ | 批次内岗位列表（分页） |
 | `platform:login` | R→M | 1b | 打开 Boss WebView 登录 |
 | `platform:checkLogin` | R→M | 1b | 检测登录状态 |
-| `platform:fetchJobs` | R→M | 1b++ | 按 `preferenceId` 触发岗位抓取 |
+| `platform:fetchJobs` | R→M | 1b++ | 按 `preferenceId` 抓取；可选 `FetchSearchOverrides`（query/city/salaryMin） |
 | `platform:debugSnapshot` | R→M | 1b+ | 导出 Boss DOM/API 结构（开发采样） |
 | `platform:hideView` | R→M | 1b | 隐藏底部 WebView |
 | `platform:setViewLayout` | R→M | 1b | 展开/收起底部面板 |
@@ -526,16 +528,16 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 | Phase 1b 偏好与登录 | ✅ 已完成 | 偏好 CRUD + Boss WebView IPC |
 | Phase 1b+ Boss 结构化适配 | ✅ 已完成 | 双通道抓取 + 错误码透传 + profile 校验 |
 | Phase 1b++ 偏好驱动抓取 | ✅ 已完成 | 多偏好 + 搜索 API + 批次持久化 |
-| Phase 1c 核心投递 | ⬜ 未开始 | 匹配 + L1 投递 + 看板 |
+| Phase 1c 核心投递 | 🔄 进行中 | 筛选/打分已完成；L1 投递与看板待做 |
 | Phase 1d 分发与更新 | ⬜ 未开始 | 打包 + 官网 + updater |
 | Phase 1e 稳定化 | ⬜ 未开始 | HR 提醒 + 协议 + 打磨 |
 | Phase 2 v0.2 | ⬜ 未开始 | 多平台 + AI + 付费 |
 | Phase 3 v0.3 | ⬜ 未开始 | AI 简历优化 |
 | Phase 4 v0.4+ | ⬜ 未开始 | 全平台 + 商业化 |
 
-**当前焦点**：Phase 1c — 规则匹配 + L1 批量投递。
+**当前焦点**：Phase 1c — L1 批量投递 + 岗位勾选 UI。
 
-**最近更新**：2026-06-28 — Phase 1b++：多条求职偏好、按偏好搜索抓取、批次持久化与分页展示。
+**最近更新**：2026-06-28 — 筛选与打分隔离、抓取参数可覆盖、偏好/岗位页 UI 优化（migration 006/007）。
 
 ---
 
@@ -543,6 +545,7 @@ Boss 页面 DOM 变更时的响应流程（目标：**48 小时内**发 patch）
 
 | 日期 | 变更 |
 |------|------|
+| 2026-06-28 | Phase 1c 起步：matching.service 筛选/打分隔离、migration 006/007、抓取参数覆盖、偏好与岗位页 UI |
 | 2026-06-28 | Phase 1b++：migration 005、多偏好 CRUD、搜索 API 抓取、job_fetch_batches、7 天/500 条配额 |
 | 2026-06-28 | Phase 1b+：应用内 DOM/API 导出、seed-profile、migration 004、双通道架构 |
 | 2026-06-27 | Phase 1b 完成：求职偏好 IPC、Boss BrowserView、platform 登录/抓取、迁移 003 |
