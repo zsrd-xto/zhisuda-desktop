@@ -2,9 +2,9 @@
   "version": "0.1.0",
   "publishedAt": "2026-06-29",
   "windows": {
-    "fileName": "职速达-Setup-0.1.0.exe",
+    "fileName": "Zhisuda-Setup-0.1.0.exe",
     "sha256": "67528e1fca7f8c78f49f63261ee79adf065fb9f06c04cfe76a57108f05dd673f",
-    "url": "https://github.com/zsrd-xto/zhisuda-desktop/releases/latest/download/职速达-Setup-0.1.0.exe"
+    "url": "https://github.com/zsrd-xto/zhisuda-desktop/releases/download/v0.1.0/Zhisuda-Setup-0.1.0.exe"
   },
   "mac": null
 }

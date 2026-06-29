@@ -50,7 +50,7 @@ npm run dev
 | `npm run format` | Prettier 格式化 `src/` |
 | `npm run typecheck` | TypeScript 类型检查 |
 | `npm run dist` | 构建并打包当前平台安装包 |
-| `npm run dist:win` | 构建 Windows 安装包（`职速达-Setup-x.y.z.exe`） |
+| `npm run dist:win` | 构建 Windows 安装包（`Zhisuda-Setup-x.y.z.exe`） |
 | `npm run dist:mac` | 构建 macOS 安装包（`.dmg`） |
 | `npm run sync:release-info` | 从 `dist/` 生成官网 `releases.json`（含 SHA256） |
 | `npm run build:win` | 同 `dist:win` |

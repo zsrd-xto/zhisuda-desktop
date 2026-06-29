@@ -42,8 +42,8 @@ function readLatestYml() {
 }
 
 const version = readLatestYml()?.version ?? readPackageVersion()
-const winArtifact = findArtifact(/职速达-Setup-.*\.exe$/i)
-const macArtifact = findArtifact(/职速达-.*-mac\.dmg$/i)
+const winArtifact = findArtifact(/Zhisuda-Setup-.*\.exe$/i)
+const macArtifact = findArtifact(/Zhisuda-.*-mac\.dmg$/i)
 
 const payload = {
   version,

@@ -18,12 +18,12 @@ asarUnpack:
   - 'resources/**'
   - 'node_modules/better-sqlite3/**'
 win:
-  executableName: 职速达
+  executableName: Zhisuda
   target:
     - nsis
   icon: build/icon.ico
 nsis:
-  artifactName: 职速达-Setup-${version}.${ext}
+  artifactName: Zhisuda-Setup-${version}.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   oneClick: false
@@ -42,7 +42,7 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
 dmg:
-  artifactName: 职速达-${version}-mac.${ext}
+  artifactName: Zhisuda-${version}-mac.${ext}
 linux:
   target:
     - AppImage
