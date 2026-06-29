@@ -1,4 +1,4 @@
-import { BOSS_RATE_LIMIT } from './boss/boss-config'
+import { BOSS_DELIVERY_LIMIT, BOSS_RATE_LIMIT } from './boss/boss-config'
 import { PlatformError } from './platform-error'
 
 export function jitterDelay(baseMs: number, jitterMs: number): number {
@@ -19,6 +19,10 @@ export async function waitForDetailInterval(): Promise<void> {
 
 export async function waitForScrollInterval(): Promise<void> {
   await sleep(jitterDelay(BOSS_RATE_LIMIT.scrollIntervalMs, BOSS_RATE_LIMIT.scrollIntervalJitterMs))
+}
+
+export async function waitForApplyInterval(): Promise<void> {
+  await sleep(jitterDelay(BOSS_DELIVERY_LIMIT.intervalMs, BOSS_DELIVERY_LIMIT.intervalJitterMs))
 }
 
 let lastFullFetchAt = 0

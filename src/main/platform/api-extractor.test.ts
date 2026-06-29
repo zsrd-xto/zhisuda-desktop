@@ -3,6 +3,7 @@ import { join } from 'path'
 import { describe, expect, it } from 'vitest'
 import {
   assertBossApiResponse,
+  buildListUrl,
   hasMorePages,
   parseDetailItem,
   parseListItems
@@ -81,5 +82,23 @@ describe('api-extractor', () => {
         json: { code: 36, message: 'too frequent' }
       })
     ).toThrowError(/验证/)
+  })
+
+  it('builds search list URL without duplicate query params', () => {
+    const searchApi: PageRecipeApi = {
+      listUrl:
+        'https://www.zhipin.com/wapi/zpgeek/search/joblist.json?page={page}&pageSize=15&city={city}&query={query}',
+      fieldMap: { id: 'encryptJobId', title: 'jobName' },
+      queryParams: { city: '101280100', query: 'Java' },
+      pagination: { param: 'page', startPage: 1, maxPages: 3 }
+    }
+
+    const url = buildListUrl(searchApi, 2)
+    expect(url).toBe(
+      'https://www.zhipin.com/wapi/zpgeek/search/joblist.json?page=2&pageSize=15&city=101280100&query=Java'
+    )
+    expect(url.match(/page=/g)).toHaveLength(1)
+    expect(url.match(/city=/g)).toHaveLength(1)
+    expect(url.match(/query=/g)).toHaveLength(1)
   })
 })

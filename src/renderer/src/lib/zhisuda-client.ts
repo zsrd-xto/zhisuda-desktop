@@ -2,6 +2,16 @@ import type { GetBatchJobsInput, JobBatchJobsResult, JobBatchListResult, ListBat
 import type { JobFetchBatch } from '@shared/types/jobs'
 import type { JobPreference, JobPreferenceInput } from '@shared/types/preferences'
 import type {
+  ApplyBatchInput,
+  ApplyBatchResult,
+  AppendBlacklistInput,
+  DeliveryProgressEvent,
+  DeliveryRecordsResult,
+  DeliveryStats,
+  GetDeliveryRecordsInput,
+  ToggleStarInput
+} from '@shared/types/delivery'
+import type {
   BossDomSnapshotResult,
   BossViewLayout,
   FetchJobsResult,
@@ -41,6 +51,7 @@ export const PLATFORM_ERROR_LABELS: Record<PlatformErrorCode, string> = {
   NOT_ON_JOBS_PAGE: '不在职位页',
   API_CHANGED: '接口变更',
   DOM_CHANGED: '页面结构变更',
+  NO_MATCHING_JOBS: '无匹配岗位',
   SCROLL_EXHAUSTED: '滚动无新数据',
   PARTIAL_DATA: '数据不完整',
   TIMEOUT: '超时',
@@ -105,5 +116,25 @@ export const zhisudaClient = {
       invoke('platform:setViewLayout', layout),
     getViewLayout: (): Promise<BossViewLayout> => invoke('platform:getViewLayout'),
     debugSnapshot: (): Promise<BossDomSnapshotResult> => invokePlatform('platform:debugSnapshot')
+  },
+  delivery: {
+    applyBatch: (input: ApplyBatchInput): Promise<ApplyBatchResult> =>
+      invokePlatform('delivery:applyBatch', input),
+    resumeQueue: (): Promise<boolean> => invoke('delivery:resumeQueue'),
+    getRecords: (input?: GetDeliveryRecordsInput): Promise<DeliveryRecordsResult> =>
+      invoke('delivery:getRecords', input),
+    getStats: (): Promise<DeliveryStats> => invoke('delivery:getStats'),
+    listStarred: (): Promise<string[]> => invoke('delivery:listStarred'),
+    listDelivered: (): Promise<string[]> => invoke('delivery:listDelivered'),
+    toggleStar: (input: ToggleStarInput): Promise<string[]> =>
+      invoke('delivery:toggleStar', input),
+    appendBlacklist: (input: AppendBlacklistInput): Promise<JobPreference> =>
+      invoke('delivery:appendBlacklist', input),
+    onProgress: (callback: (event: DeliveryProgressEvent) => void): (() => void) => {
+      if (!window.zhisuda?.onDeliveryProgress) {
+        return () => undefined
+      }
+      return window.zhisuda.onDeliveryProgress(callback)
+    }
   }
 }

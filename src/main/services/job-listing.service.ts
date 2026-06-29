@@ -291,6 +291,35 @@ export function getFetchBatch(
   return row ? mapBatchRow(row) : null
 }
 
+export function getBatchJobsByExternalIds(
+  batchId: string,
+  externalJobIds: string[],
+  db: Database.Database = getDb()
+): JobDetail[] {
+  if (externalJobIds.length === 0) {
+    return []
+  }
+
+  const batch = getFetchBatch(batchId, db)
+  if (!batch) {
+    throw new Error('抓取批次不存在')
+  }
+
+  const placeholders = externalJobIds.map(() => '?').join(', ')
+  const rows = db
+    .prepare(
+      `SELECT external_job_id, title, company_name, salary, city, job_url, detail_json
+       FROM job_listings
+       WHERE batch_id = ? AND external_job_id IN (${placeholders})`
+    )
+    .all(batchId, ...externalJobIds) as ListingRow[]
+
+  const order = new Map(externalJobIds.map((id, index) => [id, index]))
+  return rows
+    .map(mapListingRow)
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+}
+
 export function getBatchJobs(
   input: GetBatchJobsInput,
   db: Database.Database = getDb()

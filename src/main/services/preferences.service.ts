@@ -220,6 +220,41 @@ export function deletePreference(
   return result.changes > 0
 }
 
+export function appendBlacklistCompany(
+  preferenceId: string,
+  companyName: string,
+  db: Database.Database = getDb()
+): JobPreference {
+  const preference = getPreferenceOrThrow(preferenceId, db)
+  const name = companyName.trim()
+  if (!name) {
+    throw new Error('公司名称不能为空')
+  }
+
+  if (preference.blacklistCompanies.some((item) => item === name)) {
+    return preference
+  }
+
+  return savePreference(
+    {
+      id: preference.id,
+      targetPosition: preference.targetPosition,
+      titleMatchThreshold: preference.titleMatchThreshold,
+      targetCity: preference.targetCity,
+      salaryMin: preference.salaryMin,
+      salaryMax: preference.salaryMax,
+      industries: preference.industries,
+      companySizes: preference.companySizes,
+      requireInsurance: preference.requireInsurance,
+      requireWeekendOff: preference.requireWeekendOff,
+      blacklistCompanies: [...preference.blacklistCompanies, name],
+      excludeKeywords: preference.excludeKeywords,
+      responsibilityKeywords: preference.responsibilityKeywords
+    },
+    db
+  )
+}
+
 export function parseTagInput(value: string): string[] {
   return value
     .split(/[,，、\n]/)

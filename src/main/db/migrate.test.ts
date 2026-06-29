@@ -22,7 +22,9 @@ describe('runMigrations', () => {
         'platform_accounts',
         'platform_page_profiles',
         'platform_extract_runs',
-        'job_listings'
+        'job_listings',
+        'delivery_records',
+        'job_starred'
       ])
     )
 
@@ -38,7 +40,8 @@ describe('runMigrations', () => {
         '004_platform_profiles',
         '005_preferences_multi',
         '006_title_match_threshold',
-        '007_responsibility_keywords'
+        '007_responsibility_keywords',
+        '008_delivery'
       ])
     )
 
@@ -48,7 +51,7 @@ describe('runMigrations', () => {
       .prepare('SELECT version FROM schema_migrations ORDER BY version')
       .all() as Array<{ version: string }>
 
-    expect(appliedAgain).toHaveLength(7)
+    expect(appliedAgain).toHaveLength(8)
 
     db.close()
   })

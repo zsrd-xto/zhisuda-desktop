@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_JOB_PAGE_SIZE } from '@shared/types/jobs'
 import type { JobFetchBatch } from '@shared/types/jobs'
+import { MAX_DELIVERY_BATCH_SIZE } from '@shared/types/delivery'
+import type { DeliveryProgressEvent } from '@shared/types/delivery'
 import type { JobPreference } from '@shared/types/preferences'
 import { DEFAULT_BOSS_VIEW_HEIGHT } from '@shared/types/platform'
 import type { ExtractChannel, JobDetail, PlatformErrorCode, PlatformLoginStatus } from '@shared/types/platform'
@@ -38,12 +40,24 @@ export function JobsPage(): React.JSX.Element {
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [errorCode, setErrorCode] = useState<PlatformErrorCode | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [bossMessage, setBossMessage] = useState<string | null>(null)
+  const [bossError, setBossError] = useState<string | null>(null)
+  const [bossErrorCode, setBossErrorCode] = useState<PlatformErrorCode | null>(null)
+  const [fetchMessage, setFetchMessage] = useState<string | null>(null)
   const [fetchChannel, setFetchChannel] = useState<ExtractChannel | null>(null)
   const [viewExpanded, setViewExpanded] = useState(false)
   const [fetchQuery, setFetchQuery] = useState('')
   const [fetchCity, setFetchCity] = useState('')
   const [fetchSalaryMin, setFetchSalaryMin] = useState(0)
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set())
+  const [starredJobIds, setStarredJobIds] = useState<Set<string>>(new Set())
+  const [deliveredJobIds, setDeliveredJobIds] = useState<Set<string>>(new Set())
+  const [deliveryProgress, setDeliveryProgress] = useState<DeliveryProgressEvent | null>(null)
+  const [manualTakeover, setManualTakeover] = useState<{
+    message: string
+    errorCode: PlatformErrorCode
+  } | null>(null)
+  const [deliveryMessage, setDeliveryMessage] = useState<string | null>(null)
 
   const pageSize = DEFAULT_JOB_PAGE_SIZE
   const totalPages = Math.max(1, Math.ceil(jobTotal / pageSize))
@@ -51,13 +65,23 @@ export function JobsPage(): React.JSX.Element {
   const clearFeedback = (): void => {
     setError(null)
     setErrorCode(null)
-    setMessage(null)
+    setBossMessage(null)
+    setBossError(null)
+    setBossErrorCode(null)
+    setFetchMessage(null)
   }
 
   const showError = (err: unknown): void => {
     const parsed = getActionError(err)
     setError(parsed.message)
     setErrorCode(parsed.errorCode ?? null)
+  }
+
+  const showBossError = (err: unknown): void => {
+    const parsed = getActionError(err)
+    setBossMessage(null)
+    setBossError(parsed.message)
+    setBossErrorCode(parsed.errorCode ?? null)
   }
 
   const setPanelExpanded = async (expanded: boolean): Promise<void> => {
@@ -78,6 +102,15 @@ export function JobsPage(): React.JSX.Element {
     return result.items
   }, [])
 
+  const loadJobMeta = useCallback(async (): Promise<void> => {
+    const [starred, delivered] = await Promise.all([
+      zhisudaClient.delivery.listStarred(),
+      zhisudaClient.delivery.listDelivered()
+    ])
+    setStarredJobIds(new Set(starred))
+    setDeliveredJobIds(new Set(delivered))
+  }, [])
+
   const loadBatchJobs = useCallback(
     async (batchId: string, page = 1): Promise<void> => {
       const result = await zhisudaClient.jobs.getBatchJobs({ batchId, page, pageSize })
@@ -87,8 +120,10 @@ export function JobsPage(): React.JSX.Element {
       setJobPage(result.page)
       setJobTotal(result.total)
       setFetchChannel(result.batch.channel)
+      setSelectedJobIds(new Set())
+      await loadJobMeta()
     },
-    [pageSize]
+    [pageSize, loadJobMeta]
   )
 
   useEffect(() => {
@@ -140,6 +175,24 @@ export function JobsPage(): React.JSX.Element {
   }, [loadBatchJobs])
 
   useEffect(() => {
+    const unsubscribe = zhisudaClient.delivery.onProgress((event) => {
+      setDeliveryProgress(event)
+      if (event.type === 'paused') {
+        setManualTakeover({ message: event.message, errorCode: event.errorCode })
+        void setPanelExpanded(true)
+      }
+      if (event.type === 'completed') {
+        setManualTakeover(null)
+        setDeliveryMessage(
+          `投递完成：成功 ${event.successCount} 条，失败 ${event.failedCount} 条`
+        )
+        void loadJobMeta()
+      }
+    })
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
     const preference = preferences.find((item) => item.id === selectedPreferenceId)
     if (!preference) return
     setFetchQuery(preference.targetPosition)
@@ -161,7 +214,7 @@ export function JobsPage(): React.JSX.Element {
       const nextStatus = await zhisudaClient.platform.login()
       setStatus(nextStatus)
     } catch (err: unknown) {
-      showError(err)
+      showBossError(err)
     } finally {
       setBusyAction(null)
     }
@@ -174,9 +227,9 @@ export function JobsPage(): React.JSX.Element {
     try {
       const nextStatus = await zhisudaClient.platform.checkLogin()
       setStatus(nextStatus)
-      setMessage(nextStatus.loggedIn ? '已检测到 Boss 登录状态' : '当前未登录')
+      setBossMessage(nextStatus.loggedIn ? '已检测到 Boss 登录状态' : '当前未登录')
     } catch (err: unknown) {
-      showError(err)
+      showBossError(err)
     } finally {
       setBusyAction(null)
     }
@@ -189,9 +242,9 @@ export function JobsPage(): React.JSX.Element {
     try {
       await setPanelExpanded(true)
       const result = await zhisudaClient.platform.debugSnapshot()
-      setMessage(`页面结构已导出：${result.filePath}`)
+      setBossMessage(`页面结构已导出：${result.filePath}`)
     } catch (err: unknown) {
-      showError(err)
+      showBossError(err)
     } finally {
       setBusyAction(null)
     }
@@ -225,7 +278,7 @@ export function JobsPage(): React.JSX.Element {
             ? 'API+详情'
             : 'DOM'
       const partialHint = result.meta.partial ? '（部分详情未补全）' : ''
-      setMessage(`已抓取 ${result.jobs.length} 条岗位 · ${channelLabel}${partialHint}`)
+      setFetchMessage(`已抓取 ${result.jobs.length} 条岗位 · ${channelLabel}${partialHint}`)
 
       const updatedBatches = await loadBatches()
       const batchId = result.meta.batchId ?? updatedBatches[0]?.id
@@ -261,12 +314,102 @@ export function JobsPage(): React.JSX.Element {
     }
   }
 
+  const toggleJobSelection = (jobId: string): void => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(jobId)) {
+        next.delete(jobId)
+      } else if (next.size < MAX_DELIVERY_BATCH_SIZE) {
+        next.add(jobId)
+      }
+      return next
+    })
+  }
+
+  const selectAllOnPage = (): void => {
+    const selectable = jobs
+      .filter((job) => !deliveredJobIds.has(job.id))
+      .slice(0, MAX_DELIVERY_BATCH_SIZE)
+      .map((job) => job.id)
+    setSelectedJobIds(new Set(selectable))
+  }
+
+  const handleToggleStar = async (jobId: string): Promise<void> => {
+    const starred = starredJobIds.has(jobId)
+    try {
+      const updated = await zhisudaClient.delivery.toggleStar({ externalJobId: jobId, starred: !starred })
+      setStarredJobIds(new Set(updated))
+    } catch (err: unknown) {
+      showError(err)
+    }
+  }
+
+  const handleAddBlacklist = async (companyName: string): Promise<void> => {
+    if (!selectedPreferenceId) {
+      setError('请先选择求职偏好')
+      return
+    }
+    if (!companyName.trim()) return
+
+    try {
+      await zhisudaClient.delivery.appendBlacklist({
+        preferenceId: selectedPreferenceId,
+        companyName: companyName.trim()
+      })
+      setDeliveryMessage(`已将「${companyName.trim()}」加入黑名单`)
+      const prefList = await zhisudaClient.preferences.list()
+      setPreferences(prefList)
+    } catch (err: unknown) {
+      showError(err)
+    }
+  }
+
+  const handleApplyBatch = async (): Promise<void> => {
+    if (!selectedBatchId) {
+      setError('请先抓取岗位列表')
+      return
+    }
+    if (selectedJobIds.size === 0) {
+      setError('请至少勾选一个岗位')
+      return
+    }
+
+    setBusyAction('apply')
+    clearFeedback()
+    setDeliveryMessage(null)
+    setManualTakeover(null)
+    setDeliveryProgress(null)
+
+    try {
+      await setPanelExpanded(true)
+      await zhisudaClient.delivery.applyBatch({
+        batchId: selectedBatchId,
+        jobIds: Array.from(selectedJobIds),
+        preferenceId: selectedPreferenceId || undefined
+      })
+      setSelectedJobIds(new Set())
+    } catch (err: unknown) {
+      showError(err)
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  const handleResumeDelivery = async (): Promise<void> => {
+    const resumed = await zhisudaClient.delivery.resumeQueue()
+    if (resumed) {
+      setManualTakeover(null)
+      setDeliveryMessage('已继续批量投递')
+    }
+  }
+
   if (loading) {
     return <p className="text-sm text-slate-400">正在加载 Boss 平台状态…</p>
   }
 
   const singlePreference = preferences.length === 1
   const actionDisabled = busyAction !== null
+  const selectedCount = selectedJobIds.size
 
   return (
     <section
@@ -347,6 +490,7 @@ export function JobsPage(): React.JSX.Element {
           >
             {busyAction === 'fetch' ? '抓取中…' : '抓取岗位列表'}
           </button>
+          {fetchMessage && <p className="text-sm text-emerald-400">{fetchMessage}</p>}
         </div>
 
         <div className={`${cardClass} flex flex-col gap-4`}>
@@ -401,10 +545,26 @@ export function JobsPage(): React.JSX.Element {
               {busyAction === 'snapshot' ? '导出中…' : '导出页面结构'}
             </button>
           </div>
+          {(bossMessage || bossError) && (
+            <div
+              className={`rounded-lg border p-3 text-sm ${
+                bossError
+                  ? 'border-red-900/60 bg-red-950/30'
+                  : 'border-emerald-800/60 bg-emerald-950/30'
+              }`}
+            >
+              {bossErrorCode && bossError && (
+                <p className="text-xs font-medium text-red-300">
+                  {bossErrorCode} · {PLATFORM_ERROR_LABELS[bossErrorCode]}
+                </p>
+              )}
+              <p className={bossError ? 'mt-1 text-red-400' : 'text-emerald-400'}>
+                {bossError ?? bossMessage}
+              </p>
+            </div>
+          )}
         </div>
       </div>
-
-      {message && <p className="text-sm text-emerald-400">{message}</p>}
       {error && (
         <div className="rounded-lg border border-red-900/60 bg-red-950/30 p-3">
           {errorCode && (
@@ -466,14 +626,92 @@ export function JobsPage(): React.JSX.Element {
           </p>
         ) : (
           <>
+            <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={actionDisabled}
+                onClick={selectAllOnPage}
+                className="rounded border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+              >
+                全选本页（最多 {MAX_DELIVERY_BATCH_SIZE} 条）
+              </button>
+              <button
+                type="button"
+                disabled={actionDisabled || selectedCount === 0}
+                onClick={() => void handleApplyBatch()}
+                className="rounded-lg bg-emerald-500 px-4 py-1.5 text-sm font-medium text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busyAction === 'apply'
+                  ? '投递中…'
+                  : `批量投递${selectedCount > 0 ? ` (${selectedCount})` : ''}`}
+              </button>
+              {deliveryMessage && (
+                <span className="text-sm text-emerald-400">{deliveryMessage}</span>
+              )}
+            </div>
+
+            {manualTakeover && (
+              <div className="mb-3 rounded-lg border border-amber-700/60 bg-amber-950/30 p-3 text-sm">
+                <p className="font-medium text-amber-200">需要人工接管</p>
+                <p className="mt-1 text-amber-100/90">
+                  {manualTakeover.errorCode} · {PLATFORM_ERROR_LABELS[manualTakeover.errorCode]}
+                </p>
+                <p className="mt-1 text-amber-200/80">{manualTakeover.message}</p>
+                <p className="mt-2 text-xs text-slate-400">
+                  请在底部 Boss 面板中完成验证或手动点击「立即沟通」，完成后点击继续。
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void handleResumeDelivery()}
+                  className="mt-3 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400"
+                >
+                  我已完成，继续投递
+                </button>
+              </div>
+            )}
+
+            {deliveryProgress?.type === 'progress' && (
+              <p className="mb-2 text-sm text-slate-400">
+                投递进度 {deliveryProgress.current}/{deliveryProgress.total}：{deliveryProgress.jobTitle}
+              </p>
+            )}
+
             <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-              {jobs.map((job) => (
+              {jobs.map((job) => {
+                const isSelected = selectedJobIds.has(job.id)
+                const isStarred = starredJobIds.has(job.id)
+                const isDelivered = deliveredJobIds.has(job.id)
+
+                return (
                 <li
                   key={`${job.id}-${job.jobUrl}`}
-                  className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-sm"
+                  className={`rounded-lg border p-3 text-sm ${
+                    isSelected
+                      ? 'border-emerald-700/60 bg-emerald-950/20'
+                      : 'border-slate-800 bg-slate-950/60'
+                  }`}
                 >
+                  <div className="flex flex-wrap items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-slate-600"
+                      checked={isSelected}
+                      disabled={actionDisabled || isDelivered}
+                      onChange={() => toggleJobSelection(job.id)}
+                    />
+                    <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium text-white">{job.title}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-white">{job.title}</p>
+                      {isStarred && (
+                        <span className="text-xs text-amber-300">★ 重点关注</span>
+                      )}
+                      {isDelivered && (
+                        <span className="rounded bg-slate-700 px-2 py-0.5 text-xs text-slate-300">
+                          已投递
+                        </span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {job.matchScore !== undefined && (
                         <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-300">
@@ -507,8 +745,34 @@ export function JobsPage(): React.JSX.Element {
                       {job.responsibilities}
                     </p>
                   )}
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-1">
+                      <button
+                        type="button"
+                        title={isStarred ? '取消重点关注' : '标记重点关注'}
+                        disabled={actionDisabled}
+                        onClick={() => void handleToggleStar(job.id)}
+                        className={`rounded px-2 py-1 text-xs ${
+                          isStarred
+                            ? 'text-amber-300 hover:bg-amber-500/10'
+                            : 'text-slate-500 hover:bg-slate-800 hover:text-amber-200'
+                        }`}
+                      >
+                        {isStarred ? '★' : '☆'}
+                      </button>
+                      <button
+                        type="button"
+                        title="加入黑名单"
+                        disabled={actionDisabled || !job.companyName}
+                        onClick={() => void handleAddBlacklist(job.companyName)}
+                        className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-red-950/40 hover:text-red-300"
+                      >
+                        拉黑
+                      </button>
+                    </div>
+                  </div>
                 </li>
-              ))}
+              )})}
             </ul>
 
             <div className="mt-3 flex shrink-0 items-center justify-between text-sm text-slate-400">

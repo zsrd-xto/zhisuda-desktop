@@ -39,11 +39,11 @@
           }
         },
         "dom": {
-          "listContainer": ".job-list-box",
-          "itemSelector": ".job-card-wrapper, .job-card, li.job-card-box",
-          "scrollContainer": ".job-list-box",
-          "scrollStep": 600,
-          "maxScrollRounds": 6,
+          "listContainer": ".job-list-box, .job-list-wrapper",
+          "itemSelector": "li.job-card-box, .job-card-wrapper, .job-card",
+          "scrollContainer": ".job-list-box, .job-list-wrapper, .job-list, .jobs-list-container",
+          "scrollStep": 800,
+          "maxScrollRounds": 10,
           "fieldMap": {
             "id": { "selector": "a[href*=\"job_detail\"]", "attr": "href", "regex": "job_detail/([^.?/]+)" },
             "title": { "selector": ".job-name, .job-title, a.job-name", "attr": "text" },

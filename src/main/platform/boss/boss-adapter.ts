@@ -9,6 +9,7 @@ import {
   BOSS_LOGIN_URL,
   BOSS_PARTITION
 } from './boss-config'
+import { resolveBossCityCode } from './boss-city-codes'
 import checkLoginScript from './scripts/check-login.js?raw'
 import fetchJobsScript from './scripts/fetch-jobs.js?raw'
 import type { BossViewLayout, JobListing } from '../../../shared/types/platform'
@@ -88,6 +89,44 @@ export async function loadBossJobsPage(force = false): Promise<void> {
     return
   }
   await loadUrlWithTimeout(view.webContents, BOSS_JOBS_URL, BOSS_JOBS_PAGE_TIMEOUT_MS)
+}
+
+export function buildBossJobsSearchUrl(cityName: string, query: string): string {
+  const cityCode = resolveBossCityCode(cityName)
+  const params = new URLSearchParams({ city: cityCode })
+  const trimmedQuery = query.trim()
+  if (trimmedQuery) {
+    params.set('query', trimmedQuery)
+  }
+  return `${BOSS_JOBS_URL}?${params.toString()}`
+}
+
+function isSameBossSearchUrl(currentUrl: string, targetUrl: string): boolean {
+  try {
+    const current = new URL(currentUrl)
+    const target = new URL(targetUrl)
+    return (
+      current.pathname === target.pathname &&
+      current.searchParams.get('city') === target.searchParams.get('city') &&
+      (current.searchParams.get('query') ?? '') === (target.searchParams.get('query') ?? '')
+    )
+  } catch {
+    return false
+  }
+}
+
+export async function loadBossJobsSearchPage(cityName: string, query: string, force = false): Promise<void> {
+  const targetUrl = buildBossJobsSearchUrl(cityName, query)
+  const view = getBossView()
+  const currentUrl = view.webContents.getURL()
+
+  if (!force && isSameBossSearchUrl(currentUrl, targetUrl)) {
+    await delay(300)
+    return
+  }
+
+  await loadUrlWithTimeout(view.webContents, targetUrl, BOSS_JOBS_PAGE_TIMEOUT_MS)
+  await waitForJobCards(BOSS_JOBS_PAGE_TIMEOUT_MS)
 }
 
 export async function checkBossLoginStatus(): Promise<boolean> {

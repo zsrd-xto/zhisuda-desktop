@@ -3,7 +3,7 @@ import type { FetchCriteriaSnapshot } from '../../shared/types/preferences'
 import { buildConditionsLabel } from '../../shared/types/preferences'
 import { resolveBossCityCode } from './boss/boss-city-codes'
 import { BOSS_JOBS_FETCH_LIMIT, BOSS_RATE_LIMIT } from './boss/boss-config'
-import { getBossView, loadBossJobsPage } from './boss/boss-adapter'
+import { getBossView, loadBossJobsSearchPage } from './boss/boss-adapter'
 import {
   assertBossApiResponse,
   buildDetailUrl,
@@ -13,7 +13,7 @@ import {
   parseDetailItem,
   parseListItems
 } from './api-extractor'
-import { rankJobs } from '../services/matching.service'
+import { rankJobs, passesFilter } from '../services/matching.service'
 import { PlatformError } from './platform-error'
 import {
   assertFetchCooldown,
@@ -113,7 +113,8 @@ function buildListRecipeForCriteria(baseRecipe: PageRecipe, criteria: FetchCrite
 
 async function fetchListViaApi(
   webContents: WebContents,
-  recipe: PageRecipe
+  recipe: PageRecipe,
+  criteria: FetchCriteriaSnapshot
 ): Promise<JobDetail[]> {
   const api = recipe.api
   if (!api?.listUrl) {
@@ -128,8 +129,11 @@ async function fetchListViaApi(
   const jobs: JobDetail[] = []
   const seen = new Set<string>()
 
-  for (let page = startPage; page < startPage + maxPages; page++) {
-    if (page > startPage) {
+  const countMatching = (): number => jobs.filter((job) => passesFilter(job, criteria)).length
+
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+    const page = startPage + pageIndex
+    if (pageIndex > 0) {
       await waitForPageInterval()
     }
 
@@ -138,16 +142,27 @@ async function fetchListViaApi(
     const json = assertBossApiResponse(response)
     const items = parseListItems(json, api)
 
+    if (items.length === 0) {
+      break
+    }
+
     for (const item of items) {
       const mapped = mapListItem(item)
       if (!mapped.id || seen.has(mapped.id)) continue
       seen.add(mapped.id)
       jobs.push(mapped)
-      if (jobs.length >= BOSS_JOBS_FETCH_LIMIT) break
+      if (jobs.length >= BOSS_JOBS_FETCH_LIMIT * 2) break
     }
 
-    if (jobs.length >= BOSS_JOBS_FETCH_LIMIT) break
-    if (!hasMorePages(json, api)) break
+    if (countMatching() >= BOSS_JOBS_FETCH_LIMIT) {
+      break
+    }
+    if (jobs.length >= BOSS_JOBS_FETCH_LIMIT * 2) {
+      break
+    }
+    if (!hasMorePages(json, api)) {
+      break
+    }
   }
 
   return jobs
@@ -208,14 +223,19 @@ async function fetchListViaDom(
     throw new PlatformError('DOM 配置缺失', 'DOM_CHANGED')
   }
 
-  const script = compileDomListScript(dom, BOSS_JOBS_FETCH_LIMIT)
+  const domWithScroll = {
+    ...dom,
+    maxScrollRounds: dom.maxScrollRounds ?? BOSS_RATE_LIMIT.maxScrollRounds
+  }
+  const script = compileDomListScript(domWithScroll, BOSS_JOBS_FETCH_LIMIT * 2)
   const raw = (await webContents.executeJavaScript(script, true)) as Array<Record<string, unknown>>
 
   if (!Array.isArray(raw) || raw.length === 0) {
     throw new PlatformError('DOM 选择器未匹配到职位卡片', 'DOM_CHANGED')
   }
 
-  return raw.map((item) => mapListItem(item))
+  const jobs = raw.map((item) => mapListItem(item))
+  return jobs
 }
 
 export async function runBossJobExtraction(
@@ -233,7 +253,9 @@ export async function runBossJobExtraction(
 
   const searchRecipe = buildListRecipeForCriteria(listProfile.recipe, criteria)
   const view = getBossView()
-  await loadBossJobsPage()
+  const cityName = criteria.fetchCity || criteria.targetCity
+  const query = criteria.fetchQuery || criteria.targetPosition
+  await loadBossJobsSearchPage(cityName, query)
   const webContents = view.webContents
 
   let channel: ExtractChannel = 'api'
@@ -242,7 +264,7 @@ export async function runBossJobExtraction(
 
   try {
     try {
-      jobs = await fetchListViaApi(webContents, searchRecipe)
+      jobs = await fetchListViaApi(webContents, searchRecipe, criteria)
     } catch (apiError) {
       channel = 'dom'
       if (!listProfile.recipe.dom) {
@@ -263,7 +285,7 @@ export async function runBossJobExtraction(
     if (jobs.length === 0) {
       throw new PlatformError(
         `未找到符合「${buildConditionsLabel(criteria)}」的岗位，请调低名称匹配阈值或调整偏好后重试`,
-        'DOM_CHANGED'
+        'NO_MATCHING_JOBS'
       )
     }
 
@@ -328,6 +350,7 @@ export function mapPlatformErrorCodeToMessage(code: PlatformErrorCode): string {
     NOT_ON_JOBS_PAGE: '当前不在职位列表页',
     API_CHANGED: 'Boss 接口结构已变更，需更新页面配置',
     DOM_CHANGED: 'Boss 页面结构已变更，需更新选择器配置',
+    NO_MATCHING_JOBS: '未找到符合筛选条件的岗位，请调低名称匹配阈值或放宽薪资/排除规则',
     SCROLL_EXHAUSTED: '滚动加载后仍无新职位',
     PARTIAL_DATA: '部分职位详情不完整',
     TIMEOUT: '页面加载超时，请稍后重试',

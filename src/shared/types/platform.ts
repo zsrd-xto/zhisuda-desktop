@@ -72,6 +72,7 @@ export type PlatformErrorCode =
   | 'NOT_ON_JOBS_PAGE'
   | 'API_CHANGED'
   | 'DOM_CHANGED'
+  | 'NO_MATCHING_JOBS'
   | 'SCROLL_EXHAUSTED'
   | 'PARTIAL_DATA'
   | 'TIMEOUT'

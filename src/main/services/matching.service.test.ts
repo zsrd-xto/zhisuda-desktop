@@ -54,6 +54,13 @@ describe('matching.service', () => {
     expect(score).toBeGreaterThan(20)
   })
 
+  it('matches short query as substring in title', () => {
+    expect(titleJaccardScore('Java高级工程师', 'JAVA')).toBe(100)
+    expect(passesFilter(makeJob({ title: 'Java后端开发' }), { ...baseCriteria, fetchQuery: 'JAVA' })).toBe(
+      true
+    )
+  })
+
   it('rejects jobs below title threshold', () => {
     expect(
       passesFilter(makeJob({ title: '销售经理' }), { ...baseCriteria, titleMatchThreshold: 20 })

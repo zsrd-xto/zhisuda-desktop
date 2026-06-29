@@ -45,7 +45,7 @@ export function compileDomListScript(dom: PageRecipeDom, limit: number): string 
 
   const scrollContainer = dom.scrollContainer ? escapeJsString(dom.scrollContainer) : ''
   const scrollStep = dom.scrollStep ?? 600
-  const maxRounds = dom.maxScrollRounds ?? 6
+  const maxRounds = dom.maxScrollRounds ?? 10
 
   return `(async function () {
   const itemSelectors = [${itemSelectors}]
@@ -56,6 +56,29 @@ export function compileDomListScript(dom: PageRecipeDom, limit: number): string 
 
   async function sleep(ms) {
     return new Promise((r) => setTimeout(r, ms))
+  }
+
+  function resolveScrollElement() {
+    if (!scrollContainerSel) {
+      return document.scrollingElement || document.documentElement
+    }
+    for (const selector of scrollContainerSel.split(',').map((s) => s.trim()).filter(Boolean)) {
+      const el = document.querySelector(selector)
+      if (el) return el
+    }
+    return document.scrollingElement || document.documentElement
+  }
+
+  function scrollDown(scrollEl) {
+    if (!scrollEl) {
+      window.scrollTo(0, document.documentElement.scrollHeight)
+      return
+    }
+    const nextTop = Math.max(
+      scrollEl.scrollTop + scrollStep,
+      scrollEl.scrollHeight - (scrollEl.clientHeight || 0)
+    )
+    scrollEl.scrollTop = nextTop
   }
 
   function parseCard(card) {
@@ -86,18 +109,12 @@ export function compileDomListScript(dom: PageRecipeDom, limit: number): string 
     return jobs
   }
 
-  const scrollEl = scrollContainerSel
-    ? document.querySelector(scrollContainerSel)
-    : document.scrollingElement
+  const scrollEl = resolveScrollElement()
 
   let all = collectOnce()
   let lastCount = 0
   for (let round = 0; round < maxRounds && all.length < limit; round++) {
-    if (scrollEl) {
-      scrollEl.scrollTop = (scrollEl.scrollTop || 0) + scrollStep
-    } else {
-      window.scrollBy(0, scrollStep)
-    }
+    scrollDown(scrollEl)
     await sleep(2000)
     const merged = collectOnce()
     const map = new Map(all.map((j) => [j.id || j.jobUrl, j]))

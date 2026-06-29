@@ -13,6 +13,13 @@ export const BOSS_JOBS_PAGE_TIMEOUT_MS = 25_000
 
 export const BOSS_JOBS_POLL_INTERVAL_MS = 500
 
+/** L1 批量投递限制 */
+export const BOSS_DELIVERY_LIMIT = {
+  maxPerBatch: 10,
+  intervalMs: 15_000,
+  intervalJitterMs: 15_000
+} as const
+
 /** Boss 登录态常见 Cookie */
 export const BOSS_LOGIN_COOKIE_NAMES = ['wt2', 'zp_at', 'bst', '__a'] as const
 
@@ -27,15 +34,15 @@ export const BOSS_RATE_LIMIT = {
   /** 详情请求基础间隔 */
   detailIntervalMs: 4000,
   detailIntervalJitterMs: 3000,
-  /** 单次抓取最多翻页数 */
-  maxListPagesPerRun: 3,
+  /** 单次抓取最多翻页数（每页约 15 条，直至凑满匹配岗位或 API 无更多） */
+  maxListPagesPerRun: 10,
   /** 单次抓取最多拉取详情数 */
   maxDetailsPerRun: 10,
   /** DOM 滚动间隔 */
   scrollIntervalMs: 2000,
   scrollIntervalJitterMs: 1000,
   /** DOM 兜底最大滚动轮次 */
-  maxScrollRounds: 6,
+  maxScrollRounds: 10,
   /** 两次完整抓取最小冷却（毫秒） */
   minRunCooldownMs: 120_000
 } as const

@@ -1,3 +1,4 @@
+import { registerDeliveryIpc } from './delivery.ipc'
 import { registerJobsIpc } from './jobs.ipc'
 import { registerPlatformIpc } from './platform.ipc'
 import { registerPreferencesIpc } from './preferences.ipc'
@@ -10,4 +11,5 @@ export function registerIpcHandlers(): void {
   registerPreferencesIpc()
   registerJobsIpc()
   registerPlatformIpc()
+  registerDeliveryIpc()
 }

@@ -77,6 +77,14 @@ export function buildListUrl(api: PageRecipeApi, page: number): string {
     throw new PlatformError('列表 API 未配置', 'API_CHANGED')
   }
 
+  const usesTemplate = /\{page\}|\{city\}|\{query\}/.test(api.listUrl)
+  if (usesTemplate) {
+    return api.listUrl
+      .replace(/\{page\}/g, String(page))
+      .replace(/\{city\}/g, api.queryParams?.city ?? '')
+      .replace(/\{query\}/g, encodeURIComponent(api.queryParams?.query ?? ''))
+  }
+
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(api.queryParams ?? {})) {
     params.set(key, value)
@@ -87,10 +95,6 @@ export function buildListUrl(api: PageRecipeApi, page: number): string {
   }
 
   let url = api.listUrl
-    .replace(/\{page\}/g, String(page))
-    .replace(/\{city\}/g, api.queryParams?.city ?? '')
-    .replace(/\{query\}/g, encodeURIComponent(api.queryParams?.query ?? ''))
-
   const query = params.toString()
   if (query && !url.includes('?')) {
     url += `?${query}`

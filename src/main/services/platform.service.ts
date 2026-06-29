@@ -49,7 +49,7 @@ function applyBossViewBounds(): void {
   attachedView.setBounds(bounds)
 }
 
-function attachBossView(): BrowserView {
+export function attachBossView(): BrowserView {
   syncAttachedView()
   const mainWindow = getMainWindow()
   const view = getBossView()

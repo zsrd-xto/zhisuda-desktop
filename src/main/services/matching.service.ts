@@ -59,6 +59,12 @@ export function titleJaccardScore(jobTitle: string, targetPosition: string): num
   const position = targetPosition.trim()
   if (!position) return 100
 
+  const normJob = normalizeText(jobTitle)
+  const normPos = normalizeText(position)
+  if (normPos.length >= 2 && normJob.includes(normPos)) {
+    return 100
+  }
+
   const a = buildBigrams(jobTitle)
   const b = buildBigrams(position)
   if (a.size === 0 && b.size === 0) return 100
