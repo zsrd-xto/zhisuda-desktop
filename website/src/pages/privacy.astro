@@ -1,13 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 
-const content = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '../content/privacy-policy.md'),
-  'utf8'
-)
+const content = readFileSync(join(process.cwd(), 'src/content/legal/privacy-policy.md'), 'utf8')
 ---
 
 <BaseLayout title="隐私政策">
